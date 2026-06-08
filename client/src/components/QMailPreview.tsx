@@ -40,9 +40,9 @@ export interface QMailPreviewProps {
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
-function getSatelliteUrl(lat: string, lng: string, zoom = 19, size = "600x400") {
-  // Uses Google Maps Static API via Manus proxy
-  return `https://maps.googleapis.com/maps/api/staticmap?center=${lat},${lng}&zoom=${zoom}&size=${size}&maptype=satellite&key=MANUS_PROXY`;
+function getStreetViewUrl(lat: string, lng: string, size = "600x400") {
+  // Uses Google Street View Static API via Manus proxy — front-facing view of the house
+  return `https://maps.googleapis.com/maps/api/streetview?size=${size}&location=${lat},${lng}&pitch=10&fov=80&source=outdoor&key=MANUS_PROXY`;
 }
 
 function pitchLabel(pitch: string) {
@@ -87,24 +87,34 @@ function CoverPage({ props }: { props: QMailPreviewProps }) {
         </div>
       </div>
 
-      {/* Satellite image placeholder */}
+      {/* Street-view / front-facing house image */}
       <div className="relative bg-slate-800 flex-1 flex items-center justify-center overflow-hidden">
         {sampleAddress?.lat && sampleAddress?.lng ? (
-          <div className="w-full h-full bg-slate-700 flex items-center justify-center">
-            <div className="text-center text-slate-400">
-              <MapPin className="w-10 h-10 mx-auto mb-2 text-[oklch(0.55_0.22_264)]" />
-              <p className="text-sm font-medium text-white">{addr.split(",")[0]}</p>
-              <p className="text-xs text-slate-400 mt-1">Satellite image captured</p>
-            </div>
-          </div>
+          <img
+            src={getStreetViewUrl(sampleAddress.lat, sampleAddress.lng)}
+            alt={`Street view of ${addr.split(",")[0]}`}
+            className="w-full h-full object-cover"
+            onError={(e) => {
+              // Fallback if Street View is unavailable for this address
+              const el = e.currentTarget;
+              el.style.display = "none";
+              const parent = el.parentElement;
+              if (parent) {
+                const fb = document.createElement("div");
+                fb.className = "w-full h-full bg-gradient-to-br from-slate-700 to-slate-900 flex items-center justify-center";
+                fb.innerHTML = `<div class="text-center"><div class="w-20 h-20 rounded-full bg-blue-900/50 flex items-center justify-center mx-auto mb-3"><svg xmlns='http://www.w3.org/2000/svg' class='w-10 h-10 text-blue-300' fill='none' viewBox='0 0 24 24' stroke='currentColor'><path stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z'/><polyline points='9 22 9 12 15 12 15 22'/></svg></div><p class='text-white font-semibold'>Your Home</p><p class='text-slate-400 text-sm mt-1'>${addr.split(",")[0]}</p></div>`;
+                parent.appendChild(fb);
+              }
+            }}
+          />
         ) : (
           <div className="w-full h-full bg-gradient-to-br from-slate-700 to-slate-900 flex items-center justify-center">
             <div className="text-center">
               <div className="w-20 h-20 rounded-full bg-[oklch(0.55_0.22_264/0.3)] flex items-center justify-center mx-auto mb-3">
                 <MapPin className="w-10 h-10 text-[oklch(0.75_0.14_264)]" />
               </div>
-              <p className="text-white font-semibold">Satellite Roof Photo</p>
-              <p className="text-slate-400 text-sm mt-1">Captured from Google Maps imagery</p>
+              <p className="text-white font-semibold">Your Home</p>
+              <p className="text-slate-400 text-sm mt-1">Google Street View photo of your property</p>
             </div>
           </div>
         )}
