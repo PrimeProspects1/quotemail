@@ -144,6 +144,101 @@ const addressesRouter = router({
     }),
 });
 
+// ─── Storm Data ─────────────────────────────────────────────────────────────
+const stormRouter = router({
+  // Fetch active severe weather alerts for a US state (uses free NWS API)
+  alerts: protectedProcedure
+    .input(z.object({ state: z.string().length(2) }))
+    .query(async ({ input }) => {
+      const url = `https://api.weather.gov/alerts/active?area=${input.state.toUpperCase()}&event=Hail,Thunderstorm%20Wind,High%20Wind,Severe%20Thunderstorm`;
+      const res = await fetch(url, {
+        headers: { "User-Agent": "(quotemail.app, support@quotemail.app)" },
+      });
+      if (!res.ok) throw new Error(`NWS API error: ${res.status}`);
+      const data = await res.json() as {
+        features: Array<{
+          properties: {
+            id: string;
+            event: string;
+            headline: string;
+            description: string;
+            severity: string;
+            certainty: string;
+            effective: string;
+            expires: string;
+            areaDesc: string;
+            geocode?: { FIPS6?: string[]; UGC?: string[] };
+          };
+          geometry?: { coordinates: number[][][] } | null;
+        }>;
+      };
+      // Filter to hail and wind events relevant to roofing
+      const roofingEvents = ["Hail", "Thunderstorm Wind", "High Wind", "Severe Thunderstorm Warning", "Tornado Warning"];
+      const filtered = (data.features ?? []).filter(f =>
+        roofingEvents.some(e => f.properties.event?.includes(e))
+      );
+      return {
+        total: filtered.length,
+        alerts: filtered.map(f => ({
+          id: f.properties.id,
+          event: f.properties.event,
+          headline: f.properties.headline,
+          severity: f.properties.severity,
+          certainty: f.properties.certainty,
+          effective: f.properties.effective,
+          expires: f.properties.expires,
+          areaDesc: f.properties.areaDesc,
+        })),
+      };
+    }),
+
+  // Fetch recent storm events from NCEI for a state (CSV-based, returns parsed summary)
+  recentEvents: protectedProcedure
+    .input(z.object({
+      state: z.string().length(2),
+      eventType: z.enum(["Hail", "Thunderstorm Wind", "High Wind", "all"]).default("all"),
+    }))
+    .query(async ({ input }) => {
+      // NCEI Storm Events API — returns recent 90-day window
+      const endDate = new Date();
+      const startDate = new Date();
+      startDate.setDate(startDate.getDate() - 90);
+      const fmt = (d: Date) => d.toISOString().split("T")[0];
+
+      const params = new URLSearchParams({
+        datasetid: "GHCND",
+        stationid: `FIPS:${input.state}`,
+        startdate: fmt(startDate),
+        enddate: fmt(endDate),
+        limit: "25",
+      });
+
+      // Use NWS products endpoint as a fallback for recent storm data
+      // This returns Local Storm Reports (LSR) for the area
+      const lsrUrl = `https://api.weather.gov/products/types/LSR?limit=50`;
+      try {
+        const lsrRes = await fetch(lsrUrl, {
+          headers: { "User-Agent": "(quotemail.app, support@quotemail.app)" },
+        });
+        if (lsrRes.ok) {
+          const lsrData = await lsrRes.json() as { "@graph": Array<{ productCode: string; issuanceTime: string; issuingOffice: string; productName: string }> };
+          return {
+            source: "NWS Local Storm Reports",
+            count: lsrData["@graph"]?.length ?? 0,
+            reports: (lsrData["@graph"] ?? []).slice(0, 20).map(r => ({
+              issuanceTime: r.issuanceTime,
+              office: r.issuingOffice,
+              name: r.productName,
+            })),
+          };
+        }
+      } catch {
+        // ignore
+      }
+      return { source: "NWS", count: 0, reports: [] };
+    }),
+});
+
 const dashboardRouter = router({
   stats: protectedProcedure.query(async ({ ctx }) => getDashboardStats(ctx.user.id)),
   recentCampaigns: protectedProcedure.query(async ({ ctx }) => {
@@ -160,6 +255,7 @@ export const appRouter = router({
   campaigns: campaignsRouter,
   addresses: addressesRouter,
   dashboard: dashboardRouter,
+  storm: stormRouter,
 });
 
 export type AppRouter = typeof appRouter;

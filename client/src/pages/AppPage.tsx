@@ -17,6 +17,7 @@ import {
   RefreshCw,
 } from "lucide-react";
 import { MapView } from "@/components/Map";
+import { QMailPreview } from "@/components/QMailPreview";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { getLoginUrl } from "@/const";
@@ -213,6 +214,7 @@ export default function AppPage() {
     params.campaignId ? parseInt(params.campaignId) : null
   );
   const [removingId, setRemovingId] = useState<number | null>(null);
+  const [showPreview, setShowPreview] = useState(false);
   const [campaignName, setCampaignName] = useState("New Campaign");
 
   const mapRef = useRef<google.maps.Map | null>(null);
@@ -221,6 +223,9 @@ export default function AppPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const utils = trpc.useUtils();
+
+  // ── Load contractor profile for preview ──
+  const { data: profileData } = trpc.profile.get.useQuery(undefined, { enabled: isAuthenticated });
 
   // ── Queries ──
   const { data: dbAddresses = [], isLoading: addressesLoading, refetch: refetchAddresses } =
@@ -806,7 +811,7 @@ export default function AppPage() {
                 <span className="font-mono font-bold text-base text-[oklch(0.55_0.22_264)]">${totalEstimate.toLocaleString()}</span>
               </div>
               <Button
-                onClick={() => setShowOrderModal(true)}
+                onClick={() => setShowPreview(true)}
                 className="w-full bg-[oklch(0.55_0.22_264)] hover:bg-[oklch(0.48_0.22_264)] text-white font-semibold h-11"
                 disabled={measuredCount === 0}
               >
@@ -825,12 +830,38 @@ export default function AppPage() {
         </div>
       </div>
 
+      {/* Q Mail Packet Preview */}
+      {showPreview && (
+        <QMailPreview
+          onClose={() => setShowPreview(false)}
+          onConfirm={handleOrder}
+          confirming={orderCampaign.isPending}
+          totalAddresses={totalAddresses}
+          totalQMailCost={totalQMail}
+          totalEstimateValue={totalEstimate}
+          companyName={profileData?.companyName ?? undefined}
+          phone={profileData?.phone ?? undefined}
+          website={profileData?.website ?? undefined}
+          licenseNumber={profileData?.licenseNumber ?? undefined}
+          logoUrl={profileData?.logoUrl ?? undefined}
+          tagline={profileData?.tagline ?? undefined}
+          sampleAddress={dbAddresses.find(a => a.measuredSqFt) ? {
+            fullAddress: dbAddresses.find(a => a.measuredSqFt)!.fullAddress,
+            measuredSqFt: parseFloat(dbAddresses.find(a => a.measuredSqFt)!.measuredSqFt!),
+            pitch: dbAddresses.find(a => a.measuredSqFt)!.pitch ?? "6/12",
+            estimatePrice: parseFloat(dbAddresses.find(a => a.measuredSqFt)!.estimatePrice ?? "0"),
+            lat: dbAddresses.find(a => a.measuredSqFt)!.lat ?? undefined,
+            lng: dbAddresses.find(a => a.measuredSqFt)!.lng ?? undefined,
+          } : undefined}
+        />
+      )}
+
       {/* Pricing settings modal */}
       {showSettings && (
         <PricingSettings rates={rates} setRates={setRates} onClose={() => setShowSettings(false)} />
       )}
 
-      {/* Order confirmation modal */}
+      {/* Order confirmation modal — kept as fallback but replaced by QMailPreview */}
       {showOrderModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 p-8">

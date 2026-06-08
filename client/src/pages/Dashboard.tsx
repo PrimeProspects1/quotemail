@@ -8,6 +8,7 @@ import { Link } from "wouter";
 import {
   Mail, MapPin, BarChart3, DollarSign, Plus, Settings, LogOut,
   Loader2, Package, TrendingUp, ArrowRight, FileSpreadsheet,
+  CloudLightning, Truck,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -105,6 +106,16 @@ export default function Dashboard() {
           <Link href="/app">
             <Button variant="ghost" size="sm" className="gap-2 text-slate-600">
               <MapPin className="w-4 h-4" /> New Campaign
+            </Button>
+          </Link>
+          <Link href="/storm-data">
+            <Button variant="ghost" size="sm" className="gap-2 text-slate-600">
+              <CloudLightning className="w-4 h-4" /> Storm Data
+            </Button>
+          </Link>
+          <Link href="/fulfillment">
+            <Button variant="ghost" size="sm" className="gap-2 text-slate-600">
+              <Truck className="w-4 h-4" /> Fulfillment
             </Button>
           </Link>
           <Link href="/settings">
@@ -214,6 +225,8 @@ export default function Dashboard() {
           {[
             { icon: MapPin, color: "bg-blue-50 text-blue-600", title: "Pin Drop Targeting", desc: "Click on the satellite map to add individual addresses to a campaign.", href: "/app", cta: "Open Map" },
             { icon: FileSpreadsheet, color: "bg-violet-50 text-violet-600", title: "CSV Bulk Import", desc: "Upload a CSV file with hundreds of addresses from storm data or permit records.", href: "/app", cta: "Import CSV" },
+            { icon: CloudLightning, color: "bg-orange-50 text-orange-600", title: "Storm Event Targeting", desc: "Browse active NOAA hail and wind alerts to find neighborhoods that need roofing now.", href: "/storm-data", cta: "View Alerts" },
+            { icon: Truck, color: "bg-teal-50 text-teal-600", title: "Fulfillment Status", desc: "Track your Q Mail batches from print to delivery via The Addressers.", href: "/fulfillment", cta: "Track Batches" },
             { icon: Settings, color: "bg-emerald-50 text-emerald-600", title: "Set Pitch Rates", desc: "Configure your $/square pricing for each pitch tier before generating estimates.", href: "/settings", cta: "Configure" },
           ].map((a, i) => (
             <Card key={i} className="border-slate-200 hover:border-slate-300 hover:shadow-sm transition-all">

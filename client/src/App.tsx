@@ -8,6 +8,9 @@ import Home from "./pages/Home";
 import AppPage from "./pages/AppPage";
 import Dashboard from "./pages/Dashboard";
 import Settings from "./pages/Settings";
+import StormData from "./pages/StormData";
+import Onboarding from "./pages/Onboarding";
+import Fulfillment from "./pages/Fulfillment";
 
 function Router() {
   return (
@@ -17,6 +20,9 @@ function Router() {
       <Route path={"/app/:campaignId"} component={AppPage} />
       <Route path={"/dashboard"} component={Dashboard} />
       <Route path={"/settings"} component={Settings} />
+      <Route path={"/storm-data"} component={StormData} />
+      <Route path={"/onboarding"} component={Onboarding} />
+      <Route path={"/fulfillment"} component={Fulfillment} />
       <Route path={"/404"} component={NotFound} />
       <Route component={NotFound} />
     </Switch>

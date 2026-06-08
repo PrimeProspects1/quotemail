@@ -22,15 +22,36 @@
 - [x] Batch order modal with campaign creation
 - [x] Auth gate — redirects to login if not authenticated
 - [x] Pricing rates modal (local state, per-session)
+- [x] Q Mail packet PDF preview modal (5-page interactive preview before ordering)
 
 ## Dashboard (Dashboard.tsx)
 - [x] KPI stats (total campaigns, addresses, response rate, revenue)
 - [x] Campaign history table
 - [x] Response feed
+- [x] Quick action cards: Storm Data, Fulfillment, Settings
+- [x] Nav links: Storm Data, Fulfillment, Settings
 
 ## Settings (Settings.tsx)
 - [x] Company profile form
 - [x] Pitch rate configuration via tRPC mutations
+
+## Storm Data (StormData.tsx)
+- [x] NOAA NWS active alerts by state
+- [x] Filter by event type (hail, wind, tornado, etc.)
+- [x] Import affected area addresses to new campaign
+- [x] Alert detail modal with affected zones
+
+## Onboarding Wizard (Onboarding.tsx)
+- [x] Step 1: Company profile setup
+- [x] Step 2: Pitch rate configuration
+- [x] Step 3: Launch options (map, CSV, storm data)
+- [x] Route: /onboarding
+
+## Fulfillment (Fulfillment.tsx)
+- [x] Overview tab: timeline, packet specs, pricing callout
+- [x] My Batches tab: ordered/printing/delivered campaigns
+- [x] Vendor tab: The Addressers details, integration status
+- [x] Route: /fulfillment
 
 ## Bug Fixes
 - [x] Google Maps duplicate-load bug fixed (singleton promise in Map.tsx)
@@ -41,9 +62,5 @@
 ## Tests
 - [x] 4 vitest tests passing (campaigns + dashboard procedures)
 
-## Upcoming Features
+## Remaining
 - [ ] Stripe payments — charge $3.50/piece at batch approval
-- [ ] Q Mail packet PDF preview before ordering
-- [ ] Storm data integration (NOAA hail/wind events)
-- [ ] Contractor onboarding wizard (3-step setup)
-- [ ] Fulfillment vendor API integration (The Addressers)
