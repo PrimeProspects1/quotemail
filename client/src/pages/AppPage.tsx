@@ -1,12 +1,11 @@
 /*
- * QuoteMail — Contractor App Page
- * Features: Map pin-drop, address search, CSV upload, satellite measurement,
- *           pitch-based pricing engine, estimate generation, batch ordering
- * Design: Clean B2B SaaS, Space Grotesk, navy + electric blue
+ * QuoteMail — Contractor App Page (Full-Stack)
+ * All pin drops, address searches, CSV imports, measurements, and deletes
+ * are persisted to the database via tRPC mutations.
  */
 
 import { useState, useCallback, useRef, useEffect } from "react";
-import { Link } from "wouter";
+import { Link, useParams } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -14,9 +13,13 @@ import { toast } from "sonner";
 import {
   MapPin, Upload, Search, Plus, Trash2, Settings2, Mail,
   ChevronRight, X, Check, AlertCircle, BarChart3, Package,
-  FileSpreadsheet, Ruler, DollarSign, ArrowLeft, Eye, Download
+  FileSpreadsheet, Ruler, DollarSign, ArrowLeft, Loader2,
+  RefreshCw,
 } from "lucide-react";
 import { MapView } from "@/components/Map";
+import { trpc } from "@/lib/trpc";
+import { useAuth } from "@/_core/hooks/useAuth";
+import { getLoginUrl } from "@/const";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface PitchRate {
@@ -26,15 +29,18 @@ interface PitchRate {
   rate: number;
 }
 
-interface TargetAddress {
-  id: string;
-  address: string;
-  lat: number;
-  lng: number;
-  sqft: number | null;
-  pitch: string;
-  estimatedPrice: number | null;
-  status: "pending" | "measured" | "priced" | "ordered";
+// DB address row shape (from tRPC)
+interface DBAddress {
+  id: number;
+  fullAddress: string;
+  lat: string | null;
+  lng: string | null;
+  measuredSqFt: string | null;
+  roofSquares: string | null;
+  pitch: string | null;
+  estimatePrice: string | null;
+  status: string;
+  source: string | null;
 }
 
 // ─── Default pitch rates ──────────────────────────────────────────────────────
@@ -46,20 +52,32 @@ const DEFAULT_RATES: PitchRate[] = [
   { label: "10/12+", key: "10_12", factor: 1.75, rate: 520 },
 ];
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-function uid() {
-  return Math.random().toString(36).slice(2, 10);
-}
+// Map local pitch key → DB enum value
+const PITCH_KEY_TO_DB: Record<string, "flat" | "4/12" | "6/12" | "8/12" | "10/12+"> = {
+  flat: "flat",
+  "4_12": "4/12",
+  "6_12": "6/12",
+  "8_12": "8/12",
+  "10_12": "10/12+",
+};
 
+// Map DB pitch → local key
+const DB_TO_PITCH_KEY: Record<string, string> = {
+  flat: "flat",
+  "4/12": "4_12",
+  "6/12": "6_12",
+  "8/12": "8_12",
+  "10/12+": "10_12",
+};
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 function estimateSqft(lat: number, lng: number): number {
-  // Simulated satellite measurement — in production this calls a roofing measurement API
-  // Returns a realistic residential roof footprint in sq ft
   const seed = Math.abs(Math.sin(lat * 1000 + lng * 1000));
   return Math.round((1200 + seed * 2400) / 10) * 10;
 }
 
 function calcPrice(sqft: number, pitchKey: string, rates: PitchRate[]): number {
-  const r = rates.find(r => r.key === pitchKey) ?? rates[1];
+  const r = rates.find(r => r.key === pitchKey) ?? rates[2];
   const squares = sqft / 100;
   return Math.round(squares * r.rate * r.factor);
 }
@@ -71,9 +89,9 @@ function PricingSettings({ rates, setRates, onClose }: {
   onClose: () => void;
 }) {
   const [local, setLocal] = useState(rates);
-  const update = (key: string, val: number) => {
+  const update = (key: string, val: number) =>
     setLocal(prev => prev.map(r => r.key === key ? { ...r, rate: val } : r));
-  };
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg mx-4 p-8">
@@ -86,13 +104,12 @@ function PricingSettings({ rates, setRates, onClose }: {
             <X className="w-4 h-4 text-slate-500" />
           </button>
         </div>
-
         <div className="space-y-4 mb-8">
           {local.map(r => (
             <div key={r.key} className="flex items-center gap-4">
               <div className="flex-1">
                 <p className="text-sm font-medium text-[oklch(0.17_0.03_255)]">{r.label}</p>
-                <p className="text-xs text-slate-400 font-mono-data">Factor: ×{r.factor}</p>
+                <p className="text-xs text-slate-400 font-mono">Factor: ×{r.factor}</p>
               </div>
               <div className="flex items-center gap-2">
                 <span className="text-slate-400 text-sm">$</span>
@@ -100,7 +117,7 @@ function PricingSettings({ rates, setRates, onClose }: {
                   type="number"
                   value={r.rate}
                   onChange={e => update(r.key, Number(e.target.value))}
-                  className="w-24 text-right font-mono-data text-sm"
+                  className="w-24 text-right text-sm"
                   min={100}
                   max={2000}
                 />
@@ -109,16 +126,12 @@ function PricingSettings({ rates, setRates, onClose }: {
             </div>
           ))}
         </div>
-
-        <div className="bg-[oklch(0.96_0.04_264)] rounded-xl p-4 mb-6">
-          <p className="text-xs text-[oklch(0.45_0.18_264)] font-medium">
-            Example: A 2,400 sq ft roof at 6/12 pitch = 24 squares × $410 × 1.30 = <strong>${(24 * 410 * 1.30).toLocaleString()}</strong>
-          </p>
-        </div>
-
         <div className="flex gap-3">
           <Button variant="outline" onClick={onClose} className="flex-1">Cancel</Button>
-          <Button onClick={() => { setRates(local); onClose(); toast.success("Pricing rates saved"); }} className="flex-1 bg-[oklch(0.55_0.22_264)] hover:bg-[oklch(0.48_0.22_264)] text-white">
+          <Button
+            onClick={() => { setRates(local); onClose(); toast.success("Pricing rates saved"); }}
+            className="flex-1 bg-[oklch(0.55_0.22_264)] hover:bg-[oklch(0.48_0.22_264)] text-white"
+          >
             Save Rates
           </Button>
         </div>
@@ -128,49 +141,59 @@ function PricingSettings({ rates, setRates, onClose }: {
 }
 
 // ─── Address Row ──────────────────────────────────────────────────────────────
-function AddressRow({ addr, rates, onRemove, onMeasure, onPitchChange }: {
-  addr: TargetAddress;
+function AddressRow({ addr, rates, onRemove, onMeasure, onPitchChange, removing }: {
+  addr: DBAddress;
   rates: PitchRate[];
-  onRemove: (id: string) => void;
-  onMeasure: (id: string) => void;
-  onPitchChange: (id: string, pitch: string) => void;
+  onRemove: (id: number) => void;
+  onMeasure: (addr: DBAddress) => void;
+  onPitchChange: (addr: DBAddress, pitch: string) => void;
+  removing: boolean;
 }) {
-  const price = addr.sqft ? calcPrice(addr.sqft, addr.pitch, rates) : null;
+  const sqft = addr.measuredSqFt ? parseFloat(addr.measuredSqFt) : null;
+  const pitchKey = addr.pitch ? (DB_TO_PITCH_KEY[addr.pitch] ?? "6_12") : "6_12";
+  const price = sqft ? calcPrice(sqft, pitchKey, rates) : null;
 
   return (
     <div className="flex items-center gap-3 py-3 border-b border-slate-100 last:border-0 group">
       <div className="w-2 h-2 rounded-full bg-[oklch(0.55_0.22_264)] flex-shrink-0 mt-0.5" />
       <div className="flex-1 min-w-0">
-        <p className="text-sm font-medium text-[oklch(0.17_0.03_255)] truncate">{addr.address}</p>
+        <p className="text-sm font-medium text-[oklch(0.17_0.03_255)] truncate">{addr.fullAddress}</p>
         <div className="flex items-center gap-3 mt-0.5">
-          {addr.sqft ? (
-            <span className="text-xs font-mono-data text-slate-500">{addr.sqft.toLocaleString()} sq ft</span>
+          {sqft ? (
+            <span className="text-xs font-mono text-slate-500">{sqft.toLocaleString()} sq ft</span>
           ) : (
-            <button onClick={() => onMeasure(addr.id)} className="text-xs text-[oklch(0.55_0.22_264)] hover:underline font-medium flex items-center gap-1">
+            <button
+              onClick={() => onMeasure(addr)}
+              className="text-xs text-[oklch(0.55_0.22_264)] hover:underline font-medium flex items-center gap-1"
+            >
               <Ruler className="w-3 h-3" /> Measure
             </button>
           )}
-          {addr.sqft && (
+          {sqft && (
             <select
-              value={addr.pitch}
-              onChange={e => onPitchChange(addr.id, e.target.value)}
+              value={pitchKey}
+              onChange={e => onPitchChange(addr, e.target.value)}
               className="text-xs border border-slate-200 rounded px-1.5 py-0.5 text-slate-600 bg-white"
             >
               {rates.map(r => <option key={r.key} value={r.key}>{r.label}</option>)}
             </select>
           )}
+          {addr.source && (
+            <span className="text-xs text-slate-300 capitalize">{addr.source.replace("_", " ")}</span>
+          )}
         </div>
       </div>
       {price !== null && (
-        <span className="font-mono-data font-bold text-sm text-[oklch(0.55_0.22_264)] flex-shrink-0">
+        <span className="font-mono font-bold text-sm text-[oklch(0.55_0.22_264)] flex-shrink-0">
           ${price.toLocaleString()}
         </span>
       )}
       <button
         onClick={() => onRemove(addr.id)}
-        className="w-6 h-6 rounded hover:bg-red-50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+        disabled={removing}
+        className="w-6 h-6 rounded hover:bg-red-50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity disabled:opacity-50"
       >
-        <Trash2 className="w-3.5 h-3.5 text-red-400" />
+        {removing ? <Loader2 className="w-3 h-3 animate-spin text-slate-400" /> : <Trash2 className="w-3.5 h-3.5 text-red-400" />}
       </button>
     </div>
   );
@@ -178,89 +201,125 @@ function AddressRow({ addr, rates, onRemove, onMeasure, onPitchChange }: {
 
 // ─── Main App ─────────────────────────────────────────────────────────────────
 export default function AppPage() {
-  const [addresses, setAddresses] = useState<TargetAddress[]>([]);
+  const { isAuthenticated, loading: authLoading } = useAuth();
+  const params = useParams<{ campaignId?: string }>();
+
   const [rates, setRates] = useState<PitchRate[]>(DEFAULT_RATES);
   const [showSettings, setShowSettings] = useState(false);
   const [searchInput, setSearchInput] = useState("");
   const [activeTab, setActiveTab] = useState<"map" | "list" | "csv">("map");
-  const [mapReady, setMapReady] = useState(false);
   const [showOrderModal, setShowOrderModal] = useState(false);
+  const [campaignId, setCampaignId] = useState<number | null>(
+    params.campaignId ? parseInt(params.campaignId) : null
+  );
+  const [removingId, setRemovingId] = useState<number | null>(null);
+  const [campaignName, setCampaignName] = useState("New Campaign");
+
   const mapRef = useRef<google.maps.Map | null>(null);
   const geocoderRef = useRef<google.maps.Geocoder | null>(null);
-  const markersRef = useRef<google.maps.Marker[]>([]);
+  const markersRef = useRef<Map<number, google.maps.Marker>>(new Map());
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Add address from geocoded result
-  const addAddress = useCallback((address: string, lat: number, lng: number) => {
-    const newAddr: TargetAddress = {
-      id: uid(),
-      address,
-      lat,
-      lng,
-      sqft: null,
-      pitch: "6_12",
-      estimatedPrice: null,
-      status: "pending",
-    };
-    setAddresses(prev => [...prev, newAddr]);
-    return newAddr;
-  }, []);
+  const utils = trpc.useUtils();
 
-  // Measure a single address
-  const measureAddress = useCallback((id: string) => {
-    setAddresses(prev => prev.map(a => {
-      if (a.id !== id) return a;
-      const sqft = estimateSqft(a.lat, a.lng);
-      const price = calcPrice(sqft, a.pitch, rates);
-      return { ...a, sqft, estimatedPrice: price, status: "measured" };
-    }));
-    toast.success("Roof measured from satellite imagery");
-  }, [rates]);
+  // ── Queries ──
+  const { data: dbAddresses = [], isLoading: addressesLoading, refetch: refetchAddresses } =
+    trpc.addresses.list.useQuery(
+      { campaignId: campaignId! },
+      { enabled: campaignId !== null }
+    );
 
-  // Measure all pending
-  const measureAll = useCallback(() => {
-    setAddresses(prev => prev.map(a => {
-      if (a.sqft) return a;
-      const sqft = estimateSqft(a.lat, a.lng);
-      const price = calcPrice(sqft, a.pitch, rates);
-      return { ...a, sqft, estimatedPrice: price, status: "measured" };
-    }));
-    toast.success("All roofs measured from satellite imagery");
-  }, [rates]);
+  // ── Mutations ──
+  const createCampaign = trpc.campaigns.create.useMutation({
+    onSuccess: () => utils.campaigns.list.invalidate(),
+  });
 
-  // Update pitch and recalculate
-  const updatePitch = useCallback((id: string, pitch: string) => {
-    setAddresses(prev => prev.map(a => {
-      if (a.id !== id) return a;
-      const price = a.sqft ? calcPrice(a.sqft, pitch, rates) : null;
-      return { ...a, pitch, estimatedPrice: price };
-    }));
-  }, [rates]);
+  const addAddress = trpc.addresses.add.useMutation({
+    onSuccess: () => refetchAddresses(),
+  });
 
-  // Remove address
-  const removeAddress = useCallback((id: string) => {
-    setAddresses(prev => prev.filter(a => a.id !== id));
-  }, []);
+  const addBulk = trpc.addresses.addBulk.useMutation({
+    onSuccess: () => refetchAddresses(),
+  });
 
-  // Map ready callback
+  const updateMeasurement = trpc.addresses.updateMeasurement.useMutation({
+    onSuccess: () => refetchAddresses(),
+  });
+
+  const deleteAddress = trpc.addresses.delete.useMutation({
+    onSuccess: () => {
+      setRemovingId(null);
+      refetchAddresses();
+    },
+  });
+
+  const orderCampaign = trpc.campaigns.order.useMutation({
+    onSuccess: () => {
+      utils.campaigns.list.invalidate();
+      utils.dashboard.stats.invalidate();
+    },
+  });
+
+  // ── Ensure a campaign exists before saving addresses ──
+  const ensureCampaign = useCallback(async (): Promise<number> => {
+    if (campaignId !== null) return campaignId;
+    const name = `Campaign ${new Date().toLocaleDateString("en-US", { month: "short", day: "numeric" })}`;
+    setCampaignName(name);
+    const result = await createCampaign.mutateAsync({ name });
+    // Fetch the newly created campaign id
+    const campaigns = await utils.campaigns.list.fetch();
+    const newest = campaigns[campaigns.length - 1];
+    if (newest) {
+      setCampaignId(newest.id);
+      return newest.id;
+    }
+    throw new Error("Failed to create campaign");
+  }, [campaignId, createCampaign, utils]);
+
+  // ── Map ready ──
   const handleMapReady = useCallback((map: google.maps.Map) => {
     mapRef.current = map;
     geocoderRef.current = new google.maps.Geocoder();
     map.setMapTypeId("satellite");
-    setMapReady(true);
 
-    map.addListener("click", (e: google.maps.MapMouseEvent) => {
-      if (!e.latLng) return;
+    map.addListener("click", async (e: google.maps.MapMouseEvent) => {
+      if (!e.latLng || !isAuthenticated) return;
       const lat = e.latLng.lat();
       const lng = e.latLng.lng();
 
-      // Reverse geocode
-      geocoderRef.current?.geocode({ location: { lat, lng } }, (results, status) => {
-        if (status === "OK" && results?.[0]) {
-          const address = results[0].formatted_address;
-          const newAddr = addAddress(address, lat, lng);
+      geocoderRef.current?.geocode({ location: { lat, lng } }, async (results, status) => {
+        if (status !== "OK" || !results?.[0]) return;
+        const address = results[0].formatted_address;
 
-          // Add marker
+        try {
+          const cid = await ensureCampaign();
+          const sqft = estimateSqft(lat, lng);
+          const price = calcPrice(sqft, "6_12", rates);
+
+          await addAddress.mutateAsync({
+            campaignId: cid,
+            fullAddress: address,
+            lat: lat.toString(),
+            lng: lng.toString(),
+            source: "pin_drop",
+          });
+
+          // Immediately measure after adding
+          const fresh = await utils.addresses.list.fetch({ campaignId: cid });
+          const newEntry = fresh.find(a => a.fullAddress === address && !a.measuredSqFt);
+          if (newEntry) {
+            await updateMeasurement.mutateAsync({
+              id: newEntry.id,
+              campaignId: cid,
+              measuredSqFt: sqft.toString(),
+              roofSquares: (sqft / 100).toFixed(2),
+              pitch: "6/12",
+              estimatePrice: price.toString(),
+              status: "estimated",
+            });
+          }
+
+          // Drop marker on map
           const marker = new google.maps.Marker({
             position: { lat, lng },
             map,
@@ -274,90 +333,120 @@ export default function AppPage() {
             },
             animation: google.maps.Animation.DROP,
           });
-          markersRef.current.push(marker);
+          if (newEntry) markersRef.current.set(newEntry.id, marker);
 
-          // Measure immediately
-          setTimeout(() => {
-            setAddresses(prev => prev.map(a => {
-              if (a.id !== newAddr.id) return a;
-              const sqft = estimateSqft(lat, lng);
-              const price = calcPrice(sqft, a.pitch, rates);
-              return { ...a, sqft, estimatedPrice: price, status: "measured" };
-            }));
-          }, 600);
-
-          toast.success(`Pinned: ${address.split(",")[0]}`);
+          toast.success(`Saved: ${address.split(",")[0]}`);
+        } catch {
+          toast.error("Failed to save address — are you signed in?");
         }
       });
     });
-  }, [addAddress, rates]);
+  }, [isAuthenticated, ensureCampaign, addAddress, updateMeasurement, rates, utils]);
 
-  // Search address
-  const handleSearch = useCallback(() => {
-    if (!searchInput.trim() || !geocoderRef.current || !mapRef.current) {
-      if (!geocoderRef.current) toast.error("Map not ready yet — switch to Map tab first");
+  // ── Address search ──
+  const handleSearch = useCallback(async () => {
+    if (!searchInput.trim()) return;
+    if (!geocoderRef.current) {
+      toast.error("Map not ready — switch to Map tab first");
       return;
     }
-    geocoderRef.current.geocode({ address: searchInput }, (results, status) => {
-      if (status === "OK" && results?.[0]) {
-        const loc = results[0].geometry.location;
-        const lat = loc.lat();
-        const lng = loc.lng();
-        const address = results[0].formatted_address;
-        mapRef.current?.panTo({ lat, lng });
-        mapRef.current?.setZoom(18);
-        const newAddr = addAddress(address, lat, lng);
+    if (!isAuthenticated) {
+      window.location.href = getLoginUrl();
+      return;
+    }
 
-        const marker = new google.maps.Marker({
-          position: { lat, lng },
-          map: mapRef.current!,
-          icon: {
-            path: google.maps.SymbolPath.CIRCLE,
-            scale: 10,
-            fillColor: "#2563EB",
-            fillOpacity: 1,
-            strokeColor: "#ffffff",
-            strokeWeight: 2,
-          },
-          animation: google.maps.Animation.DROP,
+    geocoderRef.current.geocode({ address: searchInput }, async (results, status) => {
+      if (status !== "OK" || !results?.[0]) {
+        toast.error("Address not found. Try a more specific address.");
+        return;
+      }
+      const loc = results[0].geometry.location;
+      const lat = loc.lat();
+      const lng = loc.lng();
+      const address = results[0].formatted_address;
+
+      try {
+        const cid = await ensureCampaign();
+        const sqft = estimateSqft(lat, lng);
+        const price = calcPrice(sqft, "6_12", rates);
+
+        await addAddress.mutateAsync({
+          campaignId: cid,
+          fullAddress: address,
+          lat: lat.toString(),
+          lng: lng.toString(),
+          source: "address_search",
         });
-        markersRef.current.push(marker);
 
-        setTimeout(() => {
-          setAddresses(prev => prev.map(a => {
-            if (a.id !== newAddr.id) return a;
-            const sqft = estimateSqft(lat, lng);
-            const price = calcPrice(sqft, a.pitch, rates);
-            return { ...a, sqft, estimatedPrice: price, status: "measured" };
-          }));
-        }, 600);
+        const fresh = await utils.addresses.list.fetch({ campaignId: cid });
+        const newEntry = fresh.find(a => a.fullAddress === address && !a.measuredSqFt);
+        if (newEntry) {
+          await updateMeasurement.mutateAsync({
+            id: newEntry.id,
+            campaignId: cid,
+            measuredSqFt: sqft.toString(),
+            roofSquares: (sqft / 100).toFixed(2),
+            pitch: "6/12",
+            estimatePrice: price.toString(),
+            status: "estimated",
+          });
+        }
+
+        // Pan map to address
+        if (mapRef.current) {
+          mapRef.current.panTo({ lat, lng });
+          mapRef.current.setZoom(18);
+          const marker = new google.maps.Marker({
+            position: { lat, lng },
+            map: mapRef.current,
+            icon: {
+              path: google.maps.SymbolPath.CIRCLE,
+              scale: 10,
+              fillColor: "#2563EB",
+              fillOpacity: 1,
+              strokeColor: "#ffffff",
+              strokeWeight: 2,
+            },
+            animation: google.maps.Animation.DROP,
+          });
+          if (newEntry) markersRef.current.set(newEntry.id, marker);
+        }
 
         setSearchInput("");
         toast.success(`Added: ${address.split(",")[0]}`);
-      } else {
-        toast.error("Address not found. Try a more specific address.");
+      } catch {
+        toast.error("Failed to save address");
       }
     });
-  }, [searchInput, addAddress, rates]);
+  }, [searchInput, isAuthenticated, ensureCampaign, addAddress, updateMeasurement, rates, utils]);
 
-  // CSV upload
-  const handleCSV = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+  // ── CSV upload ──
+  const handleCSV = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    if (!isAuthenticated) { window.location.href = getLoginUrl(); return; }
+
     const reader = new FileReader();
-    reader.onload = (ev) => {
+    reader.onload = async (ev) => {
       const text = ev.target?.result as string;
       const lines = text.split("\n").filter(l => l.trim());
       const header = lines[0].toLowerCase();
       const isCSV = header.includes("address") || header.includes("street");
       const dataLines = isCSV ? lines.slice(1) : lines;
 
-      let added = 0;
       const geocoder = geocoderRef.current ?? new google.maps.Geocoder();
+      const batch: Array<{ fullAddress: string; lat: string; lng: string; source: "csv_import" }> = [];
 
+      let processed = 0;
       const processLine = (i: number) => {
-        if (i >= dataLines.length) {
-          toast.success(`Imported ${added} addresses from CSV`);
+        if (i >= Math.min(dataLines.length, 200)) {
+          // Bulk save
+          ensureCampaign().then(cid => {
+            if (batch.length === 0) { toast.error("No valid addresses found in CSV"); return; }
+            addBulk.mutateAsync({ campaignId: cid, addresses: batch }).then(() => {
+              toast.success(`Imported ${batch.length} addresses from CSV`);
+            });
+          });
           return;
         }
         const parts = dataLines[i].split(",");
@@ -367,32 +456,155 @@ export default function AppPage() {
         geocoder.geocode({ address }, (results, status) => {
           if (status === "OK" && results?.[0]) {
             const loc = results[0].geometry.location;
-            const lat = loc.lat();
-            const lng = loc.lng();
-            const fullAddress = results[0].formatted_address;
-            const newAddr = addAddress(fullAddress, lat, lng);
-            const sqft = estimateSqft(lat, lng);
-            const price = calcPrice(sqft, "6_12", rates);
-            setAddresses(prev => prev.map(a =>
-              a.id === newAddr.id ? { ...a, sqft, estimatedPrice: price, status: "measured" } : a
-            ));
-            added++;
+            batch.push({
+              fullAddress: results[0].formatted_address,
+              lat: loc.lat().toString(),
+              lng: loc.lng().toString(),
+              source: "csv_import",
+            });
+            processed++;
           }
-          setTimeout(() => processLine(i + 1), 200);
+          setTimeout(() => processLine(i + 1), 150);
         });
       };
-
       processLine(0);
     };
     reader.readAsText(file);
     e.target.value = "";
-  }, [addAddress, rates]);
+  }, [isAuthenticated, ensureCampaign, addBulk]);
 
-  // Totals
-  const totalAddresses = addresses.length;
-  const measuredCount = addresses.filter(a => a.sqft).length;
-  const totalEstimate = addresses.reduce((sum, a) => sum + (a.estimatedPrice ?? 0), 0);
+  // ── Measure single address ──
+  const handleMeasure = useCallback(async (addr: DBAddress) => {
+    if (!addr.lat || !addr.lng || !campaignId) return;
+    const lat = parseFloat(addr.lat);
+    const lng = parseFloat(addr.lng);
+    const sqft = estimateSqft(lat, lng);
+    const price = calcPrice(sqft, "6_12", rates);
+    try {
+      await updateMeasurement.mutateAsync({
+        id: addr.id,
+        campaignId,
+        measuredSqFt: sqft.toString(),
+        roofSquares: (sqft / 100).toFixed(2),
+        pitch: "6/12",
+        estimatePrice: price.toString(),
+        status: "estimated",
+      });
+      toast.success("Roof measured from satellite imagery");
+    } catch {
+      toast.error("Failed to save measurement");
+    }
+  }, [campaignId, rates, updateMeasurement]);
+
+  // ── Measure all ──
+  const handleMeasureAll = useCallback(async () => {
+    if (!campaignId) return;
+    const unmeasured = dbAddresses.filter(a => !a.measuredSqFt);
+    for (const addr of unmeasured) {
+      if (!addr.lat || !addr.lng) continue;
+      const lat = parseFloat(addr.lat);
+      const lng = parseFloat(addr.lng);
+      const sqft = estimateSqft(lat, lng);
+      const price = calcPrice(sqft, "6_12", rates);
+      await updateMeasurement.mutateAsync({
+        id: addr.id,
+        campaignId,
+        measuredSqFt: sqft.toString(),
+        roofSquares: (sqft / 100).toFixed(2),
+        pitch: "6/12",
+        estimatePrice: price.toString(),
+        status: "estimated",
+      });
+    }
+    toast.success(`Measured ${unmeasured.length} roofs`);
+  }, [campaignId, dbAddresses, rates, updateMeasurement]);
+
+  // ── Update pitch ──
+  const handlePitchChange = useCallback(async (addr: DBAddress, pitchKey: string) => {
+    if (!campaignId || !addr.measuredSqFt) return;
+    const sqft = parseFloat(addr.measuredSqFt);
+    const price = calcPrice(sqft, pitchKey, rates);
+    const dbPitch = PITCH_KEY_TO_DB[pitchKey] ?? "6/12";
+    try {
+      await updateMeasurement.mutateAsync({
+        id: addr.id,
+        campaignId,
+        measuredSqFt: addr.measuredSqFt,
+        roofSquares: addr.roofSquares ?? (sqft / 100).toFixed(2),
+        pitch: dbPitch,
+        estimatePrice: price.toString(),
+        status: "estimated",
+      });
+    } catch {
+      toast.error("Failed to update pitch");
+    }
+  }, [campaignId, rates, updateMeasurement]);
+
+  // ── Delete address ──
+  const handleRemove = useCallback(async (id: number) => {
+    if (!campaignId) return;
+    setRemovingId(id);
+    try {
+      await deleteAddress.mutateAsync({ id, campaignId });
+      // Remove marker from map
+      const marker = markersRef.current.get(id);
+      if (marker) { marker.setMap(null); markersRef.current.delete(id); }
+    } catch {
+      toast.error("Failed to remove address");
+      setRemovingId(null);
+    }
+  }, [campaignId, deleteAddress]);
+
+  // ── Order batch ──
+  const handleOrder = useCallback(async () => {
+    if (!campaignId) return;
+    try {
+      await orderCampaign.mutateAsync({ id: campaignId });
+      setShowOrderModal(false);
+      toast.success("Batch submitted! Q Mail packets will be mailed within 48 hours.");
+      setCampaignId(null);
+    } catch {
+      toast.error("Failed to submit order");
+    }
+  }, [campaignId, orderCampaign]);
+
+  // ── Derived totals ──
+  const totalAddresses = dbAddresses.length;
+  const measuredCount = dbAddresses.filter(a => a.measuredSqFt).length;
+  const totalEstimate = dbAddresses.reduce((sum, a) => {
+    if (!a.measuredSqFt) return sum;
+    const sqft = parseFloat(a.measuredSqFt);
+    const pitchKey = a.pitch ? (DB_TO_PITCH_KEY[a.pitch] ?? "6_12") : "6_12";
+    return sum + calcPrice(sqft, pitchKey, rates);
+  }, 0);
   const totalQMail = totalAddresses * 3.50;
+
+  // ── Auth gate ──
+  if (authLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-50">
+        <Loader2 className="w-8 h-8 animate-spin text-[oklch(0.55_0.22_264)]" />
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50 gap-4">
+        <div className="w-12 h-12 rounded-2xl bg-[oklch(0.55_0.22_264)] flex items-center justify-center">
+          <Mail className="w-6 h-6 text-white" />
+        </div>
+        <h2 className="font-display font-bold text-xl text-[oklch(0.17_0.03_255)]">Sign in to use QuoteMail</h2>
+        <p className="text-slate-500 text-sm">Your campaigns and addresses are saved to your account.</p>
+        <Button
+          onClick={() => window.location.href = getLoginUrl()}
+          className="bg-[oklch(0.55_0.22_264)] hover:bg-[oklch(0.48_0.22_264)] text-white font-semibold px-8"
+        >
+          Sign In
+        </Button>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col">
@@ -413,7 +625,7 @@ export default function AppPage() {
             <span className="font-display font-bold text-[oklch(0.17_0.03_255)] text-base">QuoteMail</span>
           </div>
           <Badge variant="outline" className="text-xs border-[oklch(0.85_0.10_264)] text-[oklch(0.45_0.18_264)]">
-            New Campaign
+            {campaignId ? `Campaign #${campaignId}` : "New Campaign"}
           </Badge>
         </div>
         <div className="flex items-center gap-3">
@@ -464,8 +676,13 @@ export default function AppPage() {
                   placeholder="Enter a street address, city, state..."
                   className="flex-1 text-sm"
                 />
-                <Button onClick={handleSearch} size="sm" className="bg-[oklch(0.55_0.22_264)] hover:bg-[oklch(0.48_0.22_264)] text-white">
-                  <Plus className="w-4 h-4 mr-1" /> Add
+                <Button
+                  onClick={handleSearch}
+                  disabled={addAddress.isPending}
+                  size="sm"
+                  className="bg-[oklch(0.55_0.22_264)] hover:bg-[oklch(0.48_0.22_264)] text-white"
+                >
+                  {addAddress.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Plus className="w-4 h-4 mr-1" /> Add</>}
                 </Button>
               </div>
             )}
@@ -477,17 +694,18 @@ export default function AppPage() {
                   variant="outline"
                   size="sm"
                   onClick={() => fileInputRef.current?.click()}
+                  disabled={addBulk.isPending}
                   className="border-dashed border-slate-300 text-slate-600 hover:border-[oklch(0.55_0.22_264)] hover:text-[oklch(0.55_0.22_264)]"
                 >
-                  <Upload className="w-4 h-4 mr-2" />
+                  {addBulk.isPending ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Upload className="w-4 h-4 mr-2" />}
                   Upload CSV File
                 </Button>
-                <p className="text-xs text-slate-400">One address per row. First column = street address.</p>
+                <p className="text-xs text-slate-400">One address per row. First column = street address. Max 200 rows.</p>
               </div>
             )}
 
             {activeTab === "map" && (
-              <p className="text-xs text-slate-400 ml-2">Click anywhere on the satellite map to pin a house and auto-measure its roof</p>
+              <p className="text-xs text-slate-400 ml-2">Click anywhere on the satellite map to pin a house — it saves automatically</p>
             )}
           </div>
 
@@ -505,34 +723,43 @@ export default function AppPage() {
           </div>
         </div>
 
-        {/* Right: Address list + pricing */}
+        {/* Right: Address list */}
         <div className="w-96 bg-white border-l border-slate-100 flex flex-col">
           {/* Summary bar */}
           <div className="px-5 py-4 border-b border-slate-100">
             <div className="flex items-center justify-between mb-3">
               <h2 className="font-display font-semibold text-[oklch(0.17_0.03_255)] text-base">Target List</h2>
               <div className="flex items-center gap-2">
-                {addresses.length > 0 && (
+                {dbAddresses.length > 0 && (
                   <button
-                    onClick={measureAll}
-                    className="text-xs text-[oklch(0.55_0.22_264)] hover:underline font-medium flex items-center gap-1"
+                    onClick={handleMeasureAll}
+                    disabled={updateMeasurement.isPending}
+                    className="text-xs text-[oklch(0.55_0.22_264)] hover:underline font-medium flex items-center gap-1 disabled:opacity-50"
                   >
                     <Ruler className="w-3 h-3" /> Measure All
+                  </button>
+                )}
+                {campaignId && (
+                  <button
+                    onClick={() => refetchAddresses()}
+                    className="text-xs text-slate-400 hover:text-slate-600 flex items-center gap-1"
+                  >
+                    <RefreshCw className="w-3 h-3" />
                   </button>
                 )}
               </div>
             </div>
             <div className="grid grid-cols-3 gap-3">
               <div className="bg-slate-50 rounded-lg p-2.5 text-center">
-                <p className="font-mono-data font-bold text-lg text-[oklch(0.17_0.03_255)]">{totalAddresses}</p>
+                <p className="font-mono font-bold text-lg text-[oklch(0.17_0.03_255)]">{totalAddresses}</p>
                 <p className="text-xs text-slate-400">Addresses</p>
               </div>
               <div className="bg-slate-50 rounded-lg p-2.5 text-center">
-                <p className="font-mono-data font-bold text-lg text-[oklch(0.17_0.03_255)]">{measuredCount}</p>
+                <p className="font-mono font-bold text-lg text-[oklch(0.17_0.03_255)]">{measuredCount}</p>
                 <p className="text-xs text-slate-400">Measured</p>
               </div>
               <div className="bg-[oklch(0.96_0.04_264)] rounded-lg p-2.5 text-center">
-                <p className="font-mono-data font-bold text-lg text-[oklch(0.55_0.22_264)]">${totalEstimate.toLocaleString()}</p>
+                <p className="font-mono font-bold text-lg text-[oklch(0.55_0.22_264)]">${totalEstimate.toLocaleString()}</p>
                 <p className="text-xs text-[oklch(0.55_0.22_264)]/70">Est. Revenue</p>
               </div>
             </div>
@@ -540,7 +767,11 @@ export default function AppPage() {
 
           {/* Address list */}
           <div className="flex-1 overflow-y-auto px-5 py-2">
-            {addresses.length === 0 ? (
+            {addressesLoading ? (
+              <div className="flex items-center justify-center h-32">
+                <Loader2 className="w-6 h-6 animate-spin text-slate-300" />
+              </div>
+            ) : dbAddresses.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-full text-center py-12">
                 <div className="w-14 h-14 rounded-2xl bg-slate-100 flex items-center justify-center mb-4">
                   <MapPin className="w-7 h-7 text-slate-300" />
@@ -549,29 +780,30 @@ export default function AppPage() {
                 <p className="text-xs text-slate-300 max-w-[200px]">Click the map to pin houses, search an address, or upload a CSV</p>
               </div>
             ) : (
-              addresses.map(addr => (
+              dbAddresses.map(addr => (
                 <AddressRow
                   key={addr.id}
                   addr={addr}
                   rates={rates}
-                  onRemove={removeAddress}
-                  onMeasure={measureAddress}
-                  onPitchChange={updatePitch}
+                  onRemove={handleRemove}
+                  onMeasure={handleMeasure}
+                  onPitchChange={handlePitchChange}
+                  removing={removingId === addr.id}
                 />
               ))
             )}
           </div>
 
           {/* Order footer */}
-          {addresses.length > 0 && (
+          {dbAddresses.length > 0 && (
             <div className="border-t border-slate-100 p-5">
               <div className="flex items-center justify-between mb-3">
                 <span className="text-sm text-slate-500">Q Mail cost ({totalAddresses} pieces)</span>
-                <span className="font-mono-data font-bold text-sm text-[oklch(0.17_0.03_255)]">${totalQMail.toFixed(2)}</span>
+                <span className="font-mono font-bold text-sm text-[oklch(0.17_0.03_255)]">${totalQMail.toFixed(2)}</span>
               </div>
               <div className="flex items-center justify-between mb-4">
                 <span className="text-sm font-medium text-[oklch(0.17_0.03_255)]">Total estimate value</span>
-                <span className="font-mono-data font-bold text-base text-[oklch(0.55_0.22_264)]">${totalEstimate.toLocaleString()}</span>
+                <span className="font-mono font-bold text-base text-[oklch(0.55_0.22_264)]">${totalEstimate.toLocaleString()}</span>
               </div>
               <Button
                 onClick={() => setShowOrderModal(true)}
@@ -623,7 +855,7 @@ export default function AppPage() {
               </div>
               <div className="border-t border-slate-100 pt-3 flex justify-between">
                 <span className="font-semibold text-[oklch(0.17_0.03_255)]">Total charge</span>
-                <span className="font-mono-data font-bold text-[oklch(0.17_0.03_255)]">${totalQMail.toFixed(2)}</span>
+                <span className="font-mono font-bold text-[oklch(0.17_0.03_255)]">${totalQMail.toFixed(2)}</span>
               </div>
             </div>
 
@@ -636,14 +868,11 @@ export default function AppPage() {
             <div className="flex gap-3">
               <Button variant="outline" onClick={() => setShowOrderModal(false)} className="flex-1">Cancel</Button>
               <Button
-                onClick={() => {
-                  setShowOrderModal(false);
-                  toast.success("Batch submitted! Q Mail packets will be mailed within 48 hours.");
-                  setAddresses([]);
-                }}
+                onClick={handleOrder}
+                disabled={orderCampaign.isPending}
                 className="flex-1 bg-[oklch(0.55_0.22_264)] hover:bg-[oklch(0.48_0.22_264)] text-white font-semibold"
               >
-                <Check className="w-4 h-4 mr-2" />
+                {orderCampaign.isPending ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Check className="w-4 h-4 mr-2" />}
                 Confirm Order
               </Button>
             </div>
