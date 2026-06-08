@@ -8,6 +8,13 @@
       "when": 1780934167263,
       "tag": "0000_hot_blacklash",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "5",
+      "when": 1780936885715,
+      "tag": "0001_parallel_ghost_rider",
+      "breakpoints": true
     }
   ]
 }

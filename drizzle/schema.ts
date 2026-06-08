@@ -78,6 +78,7 @@ export const campaigns = mysqlTable("campaigns", {
   estimatedPipelineValue: decimal("estimatedPipelineValue", { precision: 12, scale: 2 }).default("0.00"),
   orderedAt: timestamp("orderedAt"),
   deliveredAt: timestamp("deliveredAt"),
+  stripeSessionId: varchar("stripeSessionId", { length: 255 }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });

@@ -217,6 +217,23 @@ export default function AppPage() {
   const [showPreview, setShowPreview] = useState(false);
   const [campaignName, setCampaignName] = useState("New Campaign");
 
+  // ── Handle Stripe redirect back (success / cancelled) ──
+  useEffect(() => {
+    const searchParams = new URLSearchParams(window.location.search);
+    const payment = searchParams.get("payment");
+    if (payment === "success") {
+      toast.success("Payment confirmed! Your Q Mail batch is queued for printing.");
+      // Clean the URL without a full reload
+      window.history.replaceState({}, "", window.location.pathname);
+      utils.campaigns.list.invalidate();
+      utils.dashboard.stats.invalidate();
+    } else if (payment === "cancelled") {
+      toast.info("Checkout cancelled — your batch is still saved as a draft.");
+      window.history.replaceState({}, "", window.location.pathname);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const mapRef = useRef<google.maps.Map | null>(null);
   const geocoderRef = useRef<google.maps.Geocoder | null>(null);
   const markersRef = useRef<Map<number, google.maps.Marker>>(new Map());
@@ -264,6 +281,8 @@ export default function AppPage() {
       utils.dashboard.stats.invalidate();
     },
   });
+
+  const createCheckout = trpc.payments.createCheckout.useMutation();
 
   // ── Ensure a campaign exists before saving addresses ──
   const ensureCampaign = useCallback(async (): Promise<number> => {
@@ -560,18 +579,25 @@ export default function AppPage() {
     }
   }, [campaignId, deleteAddress]);
 
-  // ── Order batch ──
+  // ── Order batch — opens Stripe Checkout in a new tab ──
   const handleOrder = useCallback(async () => {
     if (!campaignId) return;
     try {
-      await orderCampaign.mutateAsync({ id: campaignId });
+      toast.loading("Preparing checkout...", { id: "checkout" });
+      const { checkoutUrl } = await createCheckout.mutateAsync({
+        campaignId,
+        origin: window.location.origin,
+      });
+      toast.dismiss("checkout");
+      toast.success("Redirecting to secure checkout...");
+      setShowPreview(false);
       setShowOrderModal(false);
-      toast.success("Batch submitted! Q Mail packets will be mailed within 48 hours.");
-      setCampaignId(null);
-    } catch {
-      toast.error("Failed to submit order");
+      window.open(checkoutUrl, "_blank");
+    } catch (err) {
+      toast.dismiss("checkout");
+      toast.error("Failed to start checkout. Please try again.");
     }
-  }, [campaignId, orderCampaign]);
+  }, [campaignId, createCheckout]);
 
   // ── Derived totals ──
   const totalAddresses = dbAddresses.length;
@@ -835,7 +861,7 @@ export default function AppPage() {
         <QMailPreview
           onClose={() => setShowPreview(false)}
           onConfirm={handleOrder}
-          confirming={orderCampaign.isPending}
+          confirming={createCheckout.isPending}
           totalAddresses={totalAddresses}
           totalQMailCost={totalQMail}
           totalEstimateValue={totalEstimate}

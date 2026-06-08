@@ -63,4 +63,4 @@
 - [x] 4 vitest tests passing (campaigns + dashboard procedures)
 
 ## Remaining
-- [ ] Stripe payments — charge $3.50/piece at batch approval
+- [x] Stripe payments — charge $3.50/piece at batch approval (Stripe Checkout, webhook, payment success/cancel redirect)

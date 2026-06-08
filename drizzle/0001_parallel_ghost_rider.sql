@@ -1,0 +1,1 @@
+ALTER TABLE `campaigns` ADD `stripeSessionId` varchar(255);

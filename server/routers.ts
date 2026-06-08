@@ -2,6 +2,7 @@ import { COOKIE_NAME } from "@shared/const";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { protectedProcedure, publicProcedure, router } from "./_core/trpc";
+import { createCheckoutSession } from "./stripe";
 import {
   createAddress, createCampaign, createResponseEvent, deleteAddress,
   getAddressesByCampaign, getAddressById, getCampaignById, getCampaigns,
@@ -239,6 +240,32 @@ const stormRouter = router({
     }),
 });
 
+// ─── Stripe Payments ────────────────────────────────────────────────────────
+const paymentsRouter = router({
+  createCheckout: protectedProcedure
+    .input(z.object({
+      campaignId: z.number(),
+      origin: z.string().url(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const campaign = await getCampaignById(input.campaignId, ctx.user.id);
+      if (!campaign) throw new Error("Campaign not found");
+      const pieceCount = campaign.totalAddresses ?? 0;
+      if (pieceCount < 1) throw new Error("Campaign has no addresses");
+
+      const checkoutUrl = await createCheckoutSession({
+        campaignId: input.campaignId,
+        campaignName: campaign.name,
+        pieceCount,
+        userId: ctx.user.id,
+        userEmail: ctx.user.email ?? "",
+        userName: ctx.user.name ?? "",
+        origin: input.origin,
+      });
+      return { checkoutUrl };
+    }),
+});
+
 const dashboardRouter = router({
   stats: protectedProcedure.query(async ({ ctx }) => getDashboardStats(ctx.user.id)),
   recentCampaigns: protectedProcedure.query(async ({ ctx }) => {
@@ -256,6 +283,7 @@ export const appRouter = router({
   addresses: addressesRouter,
   dashboard: dashboardRouter,
   storm: stormRouter,
+  payments: paymentsRouter,
 });
 
 export type AppRouter = typeof appRouter;
