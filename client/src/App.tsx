@@ -7,13 +7,16 @@ import { ThemeProvider } from "./contexts/ThemeContext";
 import Home from "./pages/Home";
 import AppPage from "./pages/AppPage";
 import Dashboard from "./pages/Dashboard";
+import Settings from "./pages/Settings";
 
 function Router() {
   return (
     <Switch>
       <Route path={"/"} component={Home} />
       <Route path={"/app"} component={AppPage} />
+      <Route path={"/app/:campaignId"} component={AppPage} />
       <Route path={"/dashboard"} component={Dashboard} />
+      <Route path={"/settings"} component={Settings} />
       <Route path={"/404"} component={NotFound} />
       <Route component={NotFound} />
     </Switch>
