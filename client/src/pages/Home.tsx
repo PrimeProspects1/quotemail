@@ -15,7 +15,7 @@ import {
 } from "lucide-react";
 
 // ─── Image URLs ───────────────────────────────────────────────────────────────
-const HERO_PACKET = "https://d2xsxph8kpxj0f.cloudfront.net/310519663387203986/5yjUuUPFrtM8izMyu4HkX3/hero-qmail-packet-FCazHEez7tnPukpaZ72q6x.png";
+const HERO_PACKET = "/manus-storage/hero-qmail-streetview_819a98f8.png";
 const HERO_MAP = "https://d2xsxph8kpxj0f.cloudfront.net/310519663387203986/5yjUuUPFrtM8izMyu4HkX3/hero-map-pins-GSnpw5MXhUqbYEcLUZd8nH.png";
 const SPREAD = "https://d2xsxph8kpxj0f.cloudfront.net/310519663387203986/5yjUuUPFrtM8izMyu4HkX3/qmail-5page-spread-FShCAFeMZDHeNiab2ouSSk.png";
 const APP_MOCKUP = "https://d2xsxph8kpxj0f.cloudfront.net/310519663387203986/5yjUuUPFrtM8izMyu4HkX3/contractor-app-mockup-Hig5fJ2dH7bhRh2tRs3raX.png";
