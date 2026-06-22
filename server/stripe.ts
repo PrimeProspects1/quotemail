@@ -1,9 +1,9 @@
 /*
- * QuoteMail Stripe Integration
+ * PrimeMail Stripe Integration
  * - createCheckoutSession: creates a Stripe Checkout session for a campaign batch
  * - registerStripeWebhook: registers the /api/stripe/webhook Express route
  *
- * Pricing: $3.50 per Q Mail piece (350 cents)
+ * Pricing: $3.50 per Prime Mail piece (350 cents)
  */
 
 import Stripe from "stripe";
@@ -62,8 +62,8 @@ export async function createCheckoutSession({
           currency: "usd",
           unit_amount: PRICE_PER_PIECE_CENTS,
           product_data: {
-            name: `Q Mail — ${campaignName}`,
-            description: `${pieceCount} personalized Q Mail packets · satellite-measured · print + postage included`,
+            name: `Prime Mail — ${campaignName}`,
+            description: `${pieceCount} personalized Prime Mail packets · satellite-measured · print + postage included`,
           },
         },
         quantity: pieceCount,

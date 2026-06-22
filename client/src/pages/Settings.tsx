@@ -119,7 +119,7 @@ export default function Settings() {
             <div className="w-7 h-7 rounded-lg bg-blue-600 flex items-center justify-center">
               <Mail className="w-3.5 h-3.5 text-white" />
             </div>
-            <span className="font-bold text-slate-900">QuoteMail</span>
+            <span className="font-bold text-slate-900">PrimeMail</span>
           </div>
         </div>
         <span className="text-sm text-slate-500">{user?.name ?? user?.email}</span>
@@ -128,7 +128,7 @@ export default function Settings() {
       <div className="max-w-3xl mx-auto px-6 py-10 space-y-8">
         <div>
           <h1 className="text-2xl font-bold text-slate-900">Settings</h1>
-          <p className="text-slate-500 mt-1">Configure your company profile and pricing rates for Q Mail estimates.</p>
+          <p className="text-slate-500 mt-1">Configure your company profile and pricing rates for Prime Mail estimates.</p>
         </div>
 
         {/* Company Profile */}
@@ -140,7 +140,7 @@ export default function Settings() {
               </div>
               <div>
                 <CardTitle className="text-base">Company Profile</CardTitle>
-                <CardDescription>This information appears on every Q Mail packet you send.</CardDescription>
+                <CardDescription>This information appears on every Prime Mail packet you send.</CardDescription>
               </div>
             </div>
           </CardHeader>

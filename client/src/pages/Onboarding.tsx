@@ -36,18 +36,18 @@ function StepIndicator({ current }: { current: number }) {
           <div key={step.id} className="flex items-center">
             <div className="flex flex-col items-center gap-1.5">
               <div className={`w-10 h-10 rounded-full flex items-center justify-center transition-all duration-300 ${
-                done ? "bg-[oklch(0.55_0.22_264)] text-white" :
-                active ? "bg-[oklch(0.55_0.22_264)] text-white shadow-lg shadow-blue-200" :
+                done ? "bg-[oklch(0.62_0.17_162)] text-white" :
+                active ? "bg-[oklch(0.62_0.17_162)] text-white shadow-lg shadow-green-200" :
                 "bg-slate-100 text-slate-400"
               }`}>
                 {done ? <CheckCircle2 className="w-5 h-5" /> : <step.icon className="w-5 h-5" />}
               </div>
-              <span className={`text-xs font-medium whitespace-nowrap ${active ? "text-[oklch(0.55_0.22_264)]" : done ? "text-slate-600" : "text-slate-400"}`}>
+              <span className={`text-xs font-medium whitespace-nowrap ${active ? "text-[oklch(0.62_0.17_162)]" : done ? "text-slate-600" : "text-slate-400"}`}>
                 {step.label}
               </span>
             </div>
             {i < STEPS.length - 1 && (
-              <div className={`w-16 h-px mx-2 mb-5 transition-colors duration-300 ${current > step.id ? "bg-[oklch(0.55_0.22_264)]" : "bg-slate-200"}`} />
+              <div className={`w-16 h-px mx-2 mb-5 transition-colors duration-300 ${current > step.id ? "bg-[oklch(0.62_0.17_162)]" : "bg-slate-200"}`} />
             )}
           </div>
         );
@@ -93,14 +93,14 @@ function Step1Profile({ onNext }: { onNext: () => void }) {
   return (
     <form onSubmit={handleSubmit} className="space-y-5">
       <div className="text-center mb-8">
-        <div className="w-14 h-14 rounded-2xl bg-[oklch(0.96_0.04_264)] flex items-center justify-center mx-auto mb-4">
-          <Building2 className="w-7 h-7 text-[oklch(0.55_0.22_264)]" />
+        <div className="w-14 h-14 rounded-2xl bg-[oklch(0.95_0.04_162)] flex items-center justify-center mx-auto mb-4">
+          <Building2 className="w-7 h-7 text-[oklch(0.62_0.17_162)]" />
         </div>
-        <h2 className="font-display font-bold text-[oklch(0.17_0.03_255)] text-xl mb-1">
+        <h2 className="font-display font-bold text-[oklch(0.13_0.03_162)] text-xl mb-1">
           Tell us about your company
         </h2>
         <p className="text-slate-500 text-sm">
-          This information appears on every Q Mail packet you send. Homeowners will see your name, not ours.
+          This information appears on every Prime Mail packet you send. Homeowners will see your name, not ours.
         </p>
       </div>
 
@@ -191,7 +191,7 @@ function Step1Profile({ onNext }: { onNext: () => void }) {
         <Button
           type="submit"
           disabled={saveProfile.isPending}
-          className="w-full bg-[oklch(0.55_0.22_264)] hover:bg-[oklch(0.48_0.22_264)] text-white font-semibold h-11"
+          className="w-full bg-[oklch(0.62_0.17_162)] hover:bg-[oklch(0.45_0.15_162)] text-white font-semibold h-11"
         >
           {saveProfile.isPending ? (
             <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Saving…</>
@@ -253,14 +253,14 @@ function Step2Rates({ onNext, onBack }: { onNext: () => void; onBack: () => void
   return (
     <form onSubmit={handleSubmit} className="space-y-5">
       <div className="text-center mb-8">
-        <div className="w-14 h-14 rounded-2xl bg-[oklch(0.96_0.04_264)] flex items-center justify-center mx-auto mb-4">
-          <DollarSign className="w-7 h-7 text-[oklch(0.55_0.22_264)]" />
+        <div className="w-14 h-14 rounded-2xl bg-[oklch(0.95_0.04_162)] flex items-center justify-center mx-auto mb-4">
+          <DollarSign className="w-7 h-7 text-[oklch(0.62_0.17_162)]" />
         </div>
-        <h2 className="font-display font-bold text-[oklch(0.17_0.03_255)] text-xl mb-1">
+        <h2 className="font-display font-bold text-[oklch(0.13_0.03_162)] text-xl mb-1">
           Set your pricing by pitch
         </h2>
         <p className="text-slate-500 text-sm">
-          Enter your price per square (100 sq ft) for each roof pitch. QuoteMail auto-calculates every estimate using these rates.
+          Enter your price per square (100 sq ft) for each roof pitch. PrimeMail auto-calculates every estimate using these rates.
         </p>
       </div>
 
@@ -273,7 +273,7 @@ function Step2Rates({ onNext, onBack }: { onNext: () => void; onBack: () => void
           {PITCH_LABELS.map(({ key, label, pitch, example }) => (
             <>
               <div key={`${key}-label`}>
-                <p className="text-sm font-medium text-[oklch(0.17_0.03_255)]">{label}</p>
+                <p className="text-sm font-medium text-[oklch(0.13_0.03_162)]">{label}</p>
                 <p className="text-xs text-slate-400">{example}</p>
               </div>
               <div key={`${key}-rate`} className="w-24">
@@ -316,7 +316,7 @@ function Step2Rates({ onNext, onBack }: { onNext: () => void; onBack: () => void
         <Button
           type="submit"
           disabled={saveRates.isPending}
-          className="flex-1 bg-[oklch(0.55_0.22_264)] hover:bg-[oklch(0.48_0.22_264)] text-white font-semibold h-11"
+          className="flex-1 bg-[oklch(0.62_0.17_162)] hover:bg-[oklch(0.45_0.15_162)] text-white font-semibold h-11"
         >
           {saveRates.isPending ? (
             <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Saving…</>
@@ -340,7 +340,7 @@ function Step3Launch() {
       desc: "Drop pins on the satellite map to target specific homes in any area.",
       action: () => navigate("/app"),
       cta: "Open Map",
-      color: "bg-blue-50 text-[oklch(0.55_0.22_264)]",
+      color: "bg-blue-50 text-[oklch(0.62_0.17_162)]",
     },
     {
       icon: FileSpreadsheet,
@@ -366,7 +366,7 @@ function Step3Launch() {
         <div className="w-14 h-14 rounded-2xl bg-emerald-50 flex items-center justify-center mx-auto mb-4">
           <CheckCircle2 className="w-7 h-7 text-emerald-500" />
         </div>
-        <h2 className="font-display font-bold text-[oklch(0.17_0.03_255)] text-xl mb-1">
+        <h2 className="font-display font-bold text-[oklch(0.13_0.03_162)] text-xl mb-1">
           You're all set!
         </h2>
         <p className="text-slate-500 text-sm">
@@ -379,16 +379,16 @@ function Step3Launch() {
           <button
             key={i}
             onClick={opt.action}
-            className="w-full flex items-center gap-4 p-4 bg-white rounded-xl border border-slate-200 hover:border-[oklch(0.85_0.10_264)] hover:shadow-sm transition-all duration-200 text-left group"
+            className="w-full flex items-center gap-4 p-4 bg-white rounded-xl border border-slate-200 hover:border-[oklch(0.82_0.08_162)] hover:shadow-sm transition-all duration-200 text-left group"
           >
             <div className={`w-10 h-10 rounded-xl ${opt.color} flex items-center justify-center flex-shrink-0 group-hover:scale-105 transition-transform duration-200`}>
               <opt.icon className="w-5 h-5" />
             </div>
             <div className="flex-1">
-              <p className="font-semibold text-[oklch(0.17_0.03_255)] text-sm">{opt.title}</p>
+              <p className="font-semibold text-[oklch(0.13_0.03_162)] text-sm">{opt.title}</p>
               <p className="text-xs text-slate-500 mt-0.5">{opt.desc}</p>
             </div>
-            <div className="flex items-center gap-1.5 text-xs font-semibold text-[oklch(0.55_0.22_264)] flex-shrink-0">
+            <div className="flex items-center gap-1.5 text-xs font-semibold text-[oklch(0.62_0.17_162)] flex-shrink-0">
               {opt.cta}
               <ChevronRight className="w-3.5 h-3.5" />
             </div>
@@ -425,10 +425,10 @@ export default function Onboarding() {
       <div className="relative w-full max-w-xl">
         {/* Logo */}
         <div className="flex items-center justify-center gap-2 mb-8">
-          <div className="w-9 h-9 rounded-xl bg-[oklch(0.55_0.22_264)] flex items-center justify-center shadow-lg shadow-blue-200">
+          <div className="w-9 h-9 rounded-xl bg-[oklch(0.62_0.17_162)] flex items-center justify-center shadow-lg shadow-green-200">
             <Mail className="w-5 h-5 text-white" />
           </div>
-          <span className="font-display font-bold text-[oklch(0.17_0.03_255)] text-xl tracking-tight">QuoteMail</span>
+          <span className="font-display font-bold text-[oklch(0.13_0.03_162)] text-xl tracking-tight">PrimeMail</span>
         </div>
 
         {/* Card */}
@@ -442,7 +442,7 @@ export default function Onboarding() {
 
         <p className="text-center text-xs text-slate-400 mt-4">
           You can update these settings anytime from the{" "}
-          <a href="/settings" className="text-[oklch(0.55_0.22_264)] hover:underline">Settings page</a>.
+          <a href="/settings" className="text-[oklch(0.62_0.17_162)] hover:underline">Settings page</a>.
         </p>
       </div>
     </div>

@@ -1,5 +1,5 @@
 /*
- * QuoteMail — Contractor App Page (Full-Stack)
+ * PrimeMail — Contractor App Page (Full-Stack)
  * All pin drops, address searches, CSV imports, measurements, and deletes
  * are persisted to the database via tRPC mutations.
  */
@@ -98,7 +98,7 @@ function PricingSettings({ rates, setRates, onClose }: {
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg mx-4 p-8">
         <div className="flex items-center justify-between mb-6">
           <div>
-            <h3 className="font-display font-bold text-xl text-[oklch(0.17_0.03_255)]">Your Pricing Rates</h3>
+            <h3 className="font-display font-bold text-xl text-[oklch(0.13_0.03_162)]">Your Pricing Rates</h3>
             <p className="text-sm text-slate-500 mt-0.5">Set your price per square (100 sq ft) for each pitch tier</p>
           </div>
           <button onClick={onClose} className="w-8 h-8 rounded-lg hover:bg-slate-100 flex items-center justify-center">
@@ -109,7 +109,7 @@ function PricingSettings({ rates, setRates, onClose }: {
           {local.map(r => (
             <div key={r.key} className="flex items-center gap-4">
               <div className="flex-1">
-                <p className="text-sm font-medium text-[oklch(0.17_0.03_255)]">{r.label}</p>
+                <p className="text-sm font-medium text-[oklch(0.13_0.03_162)]">{r.label}</p>
                 <p className="text-xs text-slate-400 font-mono">Factor: ×{r.factor}</p>
               </div>
               <div className="flex items-center gap-2">
@@ -131,7 +131,7 @@ function PricingSettings({ rates, setRates, onClose }: {
           <Button variant="outline" onClick={onClose} className="flex-1">Cancel</Button>
           <Button
             onClick={() => { setRates(local); onClose(); toast.success("Pricing rates saved"); }}
-            className="flex-1 bg-[oklch(0.55_0.22_264)] hover:bg-[oklch(0.48_0.22_264)] text-white"
+            className="flex-1 bg-[oklch(0.62_0.17_162)] hover:bg-[oklch(0.45_0.15_162)] text-white"
           >
             Save Rates
           </Button>
@@ -156,16 +156,16 @@ function AddressRow({ addr, rates, onRemove, onMeasure, onPitchChange, removing 
 
   return (
     <div className="flex items-center gap-3 py-3 border-b border-slate-100 last:border-0 group">
-      <div className="w-2 h-2 rounded-full bg-[oklch(0.55_0.22_264)] flex-shrink-0 mt-0.5" />
+      <div className="w-2 h-2 rounded-full bg-[oklch(0.62_0.17_162)] flex-shrink-0 mt-0.5" />
       <div className="flex-1 min-w-0">
-        <p className="text-sm font-medium text-[oklch(0.17_0.03_255)] truncate">{addr.fullAddress}</p>
+        <p className="text-sm font-medium text-[oklch(0.13_0.03_162)] truncate">{addr.fullAddress}</p>
         <div className="flex items-center gap-3 mt-0.5">
           {sqft ? (
             <span className="text-xs font-mono text-slate-500">{sqft.toLocaleString()} sq ft</span>
           ) : (
             <button
               onClick={() => onMeasure(addr)}
-              className="text-xs text-[oklch(0.55_0.22_264)] hover:underline font-medium flex items-center gap-1"
+              className="text-xs text-[oklch(0.62_0.17_162)] hover:underline font-medium flex items-center gap-1"
             >
               <Ruler className="w-3 h-3" /> Measure
             </button>
@@ -185,7 +185,7 @@ function AddressRow({ addr, rates, onRemove, onMeasure, onPitchChange, removing 
         </div>
       </div>
       {price !== null && (
-        <span className="font-mono font-bold text-sm text-[oklch(0.55_0.22_264)] flex-shrink-0">
+        <span className="font-mono font-bold text-sm text-[oklch(0.62_0.17_162)] flex-shrink-0">
           ${price.toLocaleString()}
         </span>
       )}
@@ -222,7 +222,7 @@ export default function AppPage() {
     const searchParams = new URLSearchParams(window.location.search);
     const payment = searchParams.get("payment");
     if (payment === "success") {
-      toast.success("Payment confirmed! Your Q Mail batch is queued for printing.");
+      toast.success("Payment confirmed! Your Prime Mail batch is queued for printing.");
       // Clean the URL without a full reload
       window.history.replaceState({}, "", window.location.pathname);
       utils.campaigns.list.invalidate();
@@ -350,7 +350,7 @@ export default function AppPage() {
             icon: {
               path: google.maps.SymbolPath.CIRCLE,
               scale: 10,
-              fillColor: "#2563EB",
+              fillColor: "#0EA875",
               fillOpacity: 1,
               strokeColor: "#ffffff",
               strokeWeight: 2,
@@ -426,7 +426,7 @@ export default function AppPage() {
             icon: {
               path: google.maps.SymbolPath.CIRCLE,
               scale: 10,
-              fillColor: "#2563EB",
+              fillColor: "#0EA875",
               fillOpacity: 1,
               strokeColor: "#ffffff",
               strokeWeight: 2,
@@ -614,7 +614,7 @@ export default function AppPage() {
   if (authLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-50">
-        <Loader2 className="w-8 h-8 animate-spin text-[oklch(0.55_0.22_264)]" />
+        <Loader2 className="w-8 h-8 animate-spin text-[oklch(0.62_0.17_162)]" />
       </div>
     );
   }
@@ -622,14 +622,14 @@ export default function AppPage() {
   if (!isAuthenticated) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50 gap-4">
-        <div className="w-12 h-12 rounded-2xl bg-[oklch(0.55_0.22_264)] flex items-center justify-center">
+        <div className="w-12 h-12 rounded-2xl bg-[oklch(0.62_0.17_162)] flex items-center justify-center">
           <Mail className="w-6 h-6 text-white" />
         </div>
-        <h2 className="font-display font-bold text-xl text-[oklch(0.17_0.03_255)]">Sign in to use QuoteMail</h2>
+        <h2 className="font-display font-bold text-xl text-[oklch(0.13_0.03_162)]">Sign in to use PrimeMail</h2>
         <p className="text-slate-500 text-sm">Your campaigns and addresses are saved to your account.</p>
         <Button
           onClick={() => window.location.href = getLoginUrl()}
-          className="bg-[oklch(0.55_0.22_264)] hover:bg-[oklch(0.48_0.22_264)] text-white font-semibold px-8"
+          className="bg-[oklch(0.62_0.17_162)] hover:bg-[oklch(0.45_0.15_162)] text-white font-semibold px-8"
         >
           Sign In
         </Button>
@@ -650,12 +650,12 @@ export default function AppPage() {
           </Link>
           <div className="w-px h-5 bg-slate-200" />
           <div className="flex items-center gap-2">
-            <div className="w-7 h-7 rounded-lg bg-[oklch(0.55_0.22_264)] flex items-center justify-center">
+            <div className="w-7 h-7 rounded-lg bg-[oklch(0.62_0.17_162)] flex items-center justify-center">
               <Mail className="w-3.5 h-3.5 text-white" />
             </div>
-            <span className="font-display font-bold text-[oklch(0.17_0.03_255)] text-base">QuoteMail</span>
+            <span className="font-display font-bold text-[oklch(0.13_0.03_162)] text-base">PrimeMail</span>
           </div>
-          <Badge variant="outline" className="text-xs border-[oklch(0.85_0.10_264)] text-[oklch(0.45_0.18_264)]">
+          <Badge variant="outline" className="text-xs border-[oklch(0.82_0.08_162)] text-[oklch(0.45_0.15_162)]">
             {campaignId ? `Campaign #${campaignId}` : "New Campaign"}
           </Badge>
         </div>
@@ -690,7 +690,7 @@ export default function AppPage() {
                 <button
                   key={tab.key}
                   onClick={() => setActiveTab(tab.key)}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-all duration-150 ${activeTab === tab.key ? "bg-white shadow-sm text-[oklch(0.17_0.03_255)]" : "text-slate-500 hover:text-slate-700"}`}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-all duration-150 ${activeTab === tab.key ? "bg-white shadow-sm text-[oklch(0.13_0.03_162)]" : "text-slate-500 hover:text-slate-700"}`}
                 >
                   <tab.icon className="w-3.5 h-3.5" />
                   {tab.label}
@@ -711,7 +711,7 @@ export default function AppPage() {
                   onClick={handleSearch}
                   disabled={addAddress.isPending}
                   size="sm"
-                  className="bg-[oklch(0.55_0.22_264)] hover:bg-[oklch(0.48_0.22_264)] text-white"
+                  className="bg-[oklch(0.62_0.17_162)] hover:bg-[oklch(0.45_0.15_162)] text-white"
                 >
                   {addAddress.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Plus className="w-4 h-4 mr-1" /> Add</>}
                 </Button>
@@ -726,7 +726,7 @@ export default function AppPage() {
                   size="sm"
                   onClick={() => fileInputRef.current?.click()}
                   disabled={addBulk.isPending}
-                  className="border-dashed border-slate-300 text-slate-600 hover:border-[oklch(0.55_0.22_264)] hover:text-[oklch(0.55_0.22_264)]"
+                  className="border-dashed border-slate-300 text-slate-600 hover:border-[oklch(0.62_0.17_162)] hover:text-[oklch(0.62_0.17_162)]"
                 >
                   {addBulk.isPending ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Upload className="w-4 h-4 mr-2" />}
                   Upload CSV File
@@ -759,13 +759,13 @@ export default function AppPage() {
           {/* Summary bar */}
           <div className="px-5 py-4 border-b border-slate-100">
             <div className="flex items-center justify-between mb-3">
-              <h2 className="font-display font-semibold text-[oklch(0.17_0.03_255)] text-base">Target List</h2>
+              <h2 className="font-display font-semibold text-[oklch(0.13_0.03_162)] text-base">Target List</h2>
               <div className="flex items-center gap-2">
                 {dbAddresses.length > 0 && (
                   <button
                     onClick={handleMeasureAll}
                     disabled={updateMeasurement.isPending}
-                    className="text-xs text-[oklch(0.55_0.22_264)] hover:underline font-medium flex items-center gap-1 disabled:opacity-50"
+                    className="text-xs text-[oklch(0.62_0.17_162)] hover:underline font-medium flex items-center gap-1 disabled:opacity-50"
                   >
                     <Ruler className="w-3 h-3" /> Measure All
                   </button>
@@ -782,16 +782,16 @@ export default function AppPage() {
             </div>
             <div className="grid grid-cols-3 gap-3">
               <div className="bg-slate-50 rounded-lg p-2.5 text-center">
-                <p className="font-mono font-bold text-lg text-[oklch(0.17_0.03_255)]">{totalAddresses}</p>
+                <p className="font-mono font-bold text-lg text-[oklch(0.13_0.03_162)]">{totalAddresses}</p>
                 <p className="text-xs text-slate-400">Addresses</p>
               </div>
               <div className="bg-slate-50 rounded-lg p-2.5 text-center">
-                <p className="font-mono font-bold text-lg text-[oklch(0.17_0.03_255)]">{measuredCount}</p>
+                <p className="font-mono font-bold text-lg text-[oklch(0.13_0.03_162)]">{measuredCount}</p>
                 <p className="text-xs text-slate-400">Measured</p>
               </div>
-              <div className="bg-[oklch(0.96_0.04_264)] rounded-lg p-2.5 text-center">
-                <p className="font-mono font-bold text-lg text-[oklch(0.55_0.22_264)]">${totalEstimate.toLocaleString()}</p>
-                <p className="text-xs text-[oklch(0.55_0.22_264)]/70">Est. Revenue</p>
+              <div className="bg-[oklch(0.95_0.04_162)] rounded-lg p-2.5 text-center">
+                <p className="font-mono font-bold text-lg text-[oklch(0.62_0.17_162)]">${totalEstimate.toLocaleString()}</p>
+                <p className="text-xs text-[oklch(0.62_0.17_162)]/70">Est. Revenue</p>
               </div>
             </div>
           </div>
@@ -829,20 +829,20 @@ export default function AppPage() {
           {dbAddresses.length > 0 && (
             <div className="border-t border-slate-100 p-5">
               <div className="flex items-center justify-between mb-3">
-                <span className="text-sm text-slate-500">Q Mail cost ({totalAddresses} pieces)</span>
-                <span className="font-mono font-bold text-sm text-[oklch(0.17_0.03_255)]">${totalQMail.toFixed(2)}</span>
+                <span className="text-sm text-slate-500">Prime Mail cost ({totalAddresses} pieces)</span>
+                <span className="font-mono font-bold text-sm text-[oklch(0.13_0.03_162)]">${totalQMail.toFixed(2)}</span>
               </div>
               <div className="flex items-center justify-between mb-4">
-                <span className="text-sm font-medium text-[oklch(0.17_0.03_255)]">Total estimate value</span>
-                <span className="font-mono font-bold text-base text-[oklch(0.55_0.22_264)]">${totalEstimate.toLocaleString()}</span>
+                <span className="text-sm font-medium text-[oklch(0.13_0.03_162)]">Total estimate value</span>
+                <span className="font-mono font-bold text-base text-[oklch(0.62_0.17_162)]">${totalEstimate.toLocaleString()}</span>
               </div>
               <Button
                 onClick={() => setShowPreview(true)}
-                className="w-full bg-[oklch(0.55_0.22_264)] hover:bg-[oklch(0.48_0.22_264)] text-white font-semibold h-11"
+                className="w-full bg-[oklch(0.62_0.17_162)] hover:bg-[oklch(0.45_0.15_162)] text-white font-semibold h-11"
                 disabled={measuredCount === 0}
               >
                 <Mail className="w-4 h-4 mr-2" />
-                Order Q Mail Batch
+                Order Prime Mail Batch
                 <ChevronRight className="w-4 h-4 ml-1" />
               </Button>
               {measuredCount < totalAddresses && (
@@ -856,7 +856,7 @@ export default function AppPage() {
         </div>
       </div>
 
-      {/* Q Mail Packet Preview */}
+      {/* Prime Mail Packet Preview */}
       {showPreview && (
         <QMailPreview
           onClose={() => setShowPreview(false)}
@@ -891,33 +891,33 @@ export default function AppPage() {
       {showOrderModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 p-8">
-            <div className="w-12 h-12 rounded-2xl bg-[oklch(0.96_0.04_264)] flex items-center justify-center mb-5">
-              <Package className="w-6 h-6 text-[oklch(0.55_0.22_264)]" />
+            <div className="w-12 h-12 rounded-2xl bg-[oklch(0.95_0.04_162)] flex items-center justify-center mb-5">
+              <Package className="w-6 h-6 text-[oklch(0.62_0.17_162)]" />
             </div>
-            <h3 className="font-display font-bold text-xl text-[oklch(0.17_0.03_255)] mb-2">Confirm Q Mail Batch</h3>
+            <h3 className="font-display font-bold text-xl text-[oklch(0.13_0.03_162)] mb-2">Confirm Prime Mail Batch</h3>
             <p className="text-slate-500 text-sm mb-6">Review your order before we send it to print.</p>
 
             <div className="space-y-3 mb-6">
               <div className="flex justify-between text-sm">
                 <span className="text-slate-500">Addresses</span>
-                <span className="font-medium text-[oklch(0.17_0.03_255)]">{totalAddresses} homes</span>
+                <span className="font-medium text-[oklch(0.13_0.03_162)]">{totalAddresses} homes</span>
               </div>
               <div className="flex justify-between text-sm">
-                <span className="text-slate-500">Q Mail packets</span>
-                <span className="font-medium text-[oklch(0.17_0.03_255)]">{totalAddresses} × $3.50</span>
+                <span className="text-slate-500">Prime Mail packets</span>
+                <span className="font-medium text-[oklch(0.13_0.03_162)]">{totalAddresses} × $3.50</span>
               </div>
               <div className="flex justify-between text-sm">
                 <span className="text-slate-500">Total estimate value</span>
-                <span className="font-medium text-[oklch(0.55_0.22_264)]">${totalEstimate.toLocaleString()}</span>
+                <span className="font-medium text-[oklch(0.62_0.17_162)]">${totalEstimate.toLocaleString()}</span>
               </div>
               <div className="border-t border-slate-100 pt-3 flex justify-between">
-                <span className="font-semibold text-[oklch(0.17_0.03_255)]">Total charge</span>
-                <span className="font-mono font-bold text-[oklch(0.17_0.03_255)]">${totalQMail.toFixed(2)}</span>
+                <span className="font-semibold text-[oklch(0.13_0.03_162)]">Total charge</span>
+                <span className="font-mono font-bold text-[oklch(0.13_0.03_162)]">${totalQMail.toFixed(2)}</span>
               </div>
             </div>
 
-            <div className="bg-[oklch(0.96_0.04_264)] rounded-xl p-4 mb-6">
-              <p className="text-xs text-[oklch(0.45_0.18_264)]">
+            <div className="bg-[oklch(0.95_0.04_162)] rounded-xl p-4 mb-6">
+              <p className="text-xs text-[oklch(0.45_0.15_162)]">
                 <strong>Turnaround:</strong> Packets are printed and dropped at USPS within 48 hours. Homeowners receive mail in 3–7 business days.
               </p>
             </div>
@@ -927,7 +927,7 @@ export default function AppPage() {
               <Button
                 onClick={handleOrder}
                 disabled={orderCampaign.isPending}
-                className="flex-1 bg-[oklch(0.55_0.22_264)] hover:bg-[oklch(0.48_0.22_264)] text-white font-semibold"
+                className="flex-1 bg-[oklch(0.62_0.17_162)] hover:bg-[oklch(0.45_0.15_162)] text-white font-semibold"
               >
                 {orderCampaign.isPending ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Check className="w-4 h-4 mr-2" />}
                 Confirm Order

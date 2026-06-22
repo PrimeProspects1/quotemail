@@ -52,7 +52,7 @@ export default function Dashboard() {
           <div className="w-12 h-12 rounded-xl bg-blue-600 flex items-center justify-center mx-auto mb-4">
             <Mail className="w-6 h-6 text-white" />
           </div>
-          <h2 className="text-xl font-bold text-slate-900 mb-2">Sign in to QuoteMail</h2>
+          <h2 className="text-xl font-bold text-slate-900 mb-2">Sign in to PrimeMail</h2>
           <p className="text-slate-500 mb-6">Access your contractor dashboard and campaigns.</p>
           <a href={getLoginUrl()}>
             <Button className="bg-blue-600 hover:bg-blue-700 text-white">Sign In</Button>
@@ -64,7 +64,7 @@ export default function Dashboard() {
 
   const statCards = [
     {
-      label: "Total Q Mails Sent",
+      label: "Total Prime Mails Sent",
       value: statsLoading ? "—" : (stats?.totalAddresses ?? 0).toLocaleString(),
       icon: Mail,
       color: "text-blue-600",
@@ -100,7 +100,7 @@ export default function Dashboard() {
           <div className="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center">
             <Mail className="w-4 h-4 text-white" />
           </div>
-          <span className="font-bold text-slate-900 text-lg">QuoteMail</span>
+          <span className="font-bold text-slate-900 text-lg">PrimeMail</span>
         </div>
         <div className="flex items-center gap-2">
           <Link href="/app">
@@ -135,7 +135,7 @@ export default function Dashboard() {
             <h1 className="text-2xl font-bold text-slate-900">
               Welcome back{user?.name ? `, ${user.name.split(" ")[0]}` : ""}
             </h1>
-            <p className="text-slate-500 mt-0.5">Here is your QuoteMail overview.</p>
+            <p className="text-slate-500 mt-0.5">Here is your PrimeMail overview.</p>
           </div>
           <Button
             onClick={() => createCampaign.mutate({ name: `Campaign ${new Date().toLocaleDateString()}` })}
@@ -226,7 +226,7 @@ export default function Dashboard() {
             { icon: MapPin, color: "bg-blue-50 text-blue-600", title: "Pin Drop Targeting", desc: "Click on the satellite map to add individual addresses to a campaign.", href: "/app", cta: "Open Map" },
             { icon: FileSpreadsheet, color: "bg-violet-50 text-violet-600", title: "CSV Bulk Import", desc: "Upload a CSV file with hundreds of addresses from storm data or permit records.", href: "/app", cta: "Import CSV" },
             { icon: CloudLightning, color: "bg-orange-50 text-orange-600", title: "Storm Event Targeting", desc: "Browse active NOAA hail and wind alerts to find neighborhoods that need roofing now.", href: "/storm-data", cta: "View Alerts" },
-            { icon: Truck, color: "bg-teal-50 text-teal-600", title: "Fulfillment Status", desc: "Track your Q Mail batches from print to delivery via The Addressers.", href: "/fulfillment", cta: "Track Batches" },
+            { icon: Truck, color: "bg-teal-50 text-teal-600", title: "Fulfillment Status", desc: "Track your Prime Mail batches from print to delivery via The Addressers.", href: "/fulfillment", cta: "Track Batches" },
             { icon: Settings, color: "bg-emerald-50 text-emerald-600", title: "Set Pitch Rates", desc: "Configure your $/square pricing for each pitch tier before generating estimates.", href: "/settings", cta: "Configure" },
           ].map((a, i) => (
             <Card key={i} className="border-slate-200 hover:border-slate-300 hover:shadow-sm transition-all">

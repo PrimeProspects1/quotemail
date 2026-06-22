@@ -1,5 +1,5 @@
 /*
- * Q Mail Packet Preview
+ * Prime Mail Packet Preview
  * A 5-page visual preview of the personalized estimate packet
  * that will be printed and mailed to the homeowner.
  */
@@ -67,12 +67,12 @@ function CoverPage({ props }: { props: QMailPreviewProps }) {
   return (
     <div className="bg-white h-full flex flex-col" style={{ fontFamily: "Georgia, serif" }}>
       {/* Header band */}
-      <div className="bg-[oklch(0.17_0.03_255)] px-8 py-5 flex items-center justify-between">
+      <div className="bg-[oklch(0.13_0.03_162)] px-8 py-5 flex items-center justify-between">
         <div className="flex items-center gap-3">
           {logoUrl ? (
             <img src={logoUrl} alt={co} className="h-10 w-auto object-contain" />
           ) : (
-            <div className="w-10 h-10 rounded-lg bg-[oklch(0.55_0.22_264)] flex items-center justify-center">
+            <div className="w-10 h-10 rounded-lg bg-[oklch(0.62_0.17_162)] flex items-center justify-center">
               <Mail className="w-5 h-5 text-white" />
             </div>
           )}
@@ -111,7 +111,7 @@ function CoverPage({ props }: { props: QMailPreviewProps }) {
           <div className="w-full h-full bg-gradient-to-br from-slate-700 to-slate-900 flex items-center justify-center">
             <div className="text-center">
               <div className="w-20 h-20 rounded-full bg-[oklch(0.55_0.22_264/0.3)] flex items-center justify-center mx-auto mb-3">
-                <MapPin className="w-10 h-10 text-[oklch(0.75_0.14_264)]" />
+                <MapPin className="w-10 h-10 text-[oklch(0.78_0.10_162)]" />
               </div>
               <p className="text-white font-semibold">Your Home</p>
               <p className="text-slate-400 text-sm mt-1">Google Street View photo of your property</p>
@@ -122,7 +122,7 @@ function CoverPage({ props }: { props: QMailPreviewProps }) {
         {/* Overlay badge */}
         <div className="absolute bottom-4 left-4 bg-white/95 backdrop-blur-sm rounded-xl px-4 py-2.5 shadow-lg">
           <p className="text-xs text-slate-500 font-medium">Your Custom Roofing Estimate</p>
-          <p className="text-2xl font-bold text-[oklch(0.17_0.03_255)]">${price.toLocaleString()}</p>
+          <p className="text-2xl font-bold text-[oklch(0.13_0.03_162)]">${price.toLocaleString()}</p>
           <p className="text-xs text-slate-400">{sqft.toLocaleString()} sq ft · {pitchLabel(sampleAddress?.pitch ?? "6/12")}</p>
         </div>
 
@@ -136,9 +136,9 @@ function CoverPage({ props }: { props: QMailPreviewProps }) {
       </div>
 
       {/* Address bar */}
-      <div className="bg-[oklch(0.96_0.04_264)] px-8 py-3 flex items-center gap-2">
-        <MapPin className="w-4 h-4 text-[oklch(0.55_0.22_264)]" />
-        <p className="text-sm text-[oklch(0.17_0.03_255)] font-medium">{addr}</p>
+      <div className="bg-[oklch(0.95_0.04_162)] px-8 py-3 flex items-center gap-2">
+        <MapPin className="w-4 h-4 text-[oklch(0.62_0.17_162)]" />
+        <p className="text-sm text-[oklch(0.13_0.03_162)] font-medium">{addr}</p>
       </div>
     </div>
   );
@@ -156,13 +156,13 @@ function LetterPage({ props }: { props: QMailPreviewProps }) {
       {/* Letterhead */}
       <div className="flex items-start justify-between mb-8 pb-6 border-b border-slate-200">
         <div>
-          <p className="font-bold text-[oklch(0.17_0.03_255)] text-xl">{co}</p>
+          <p className="font-bold text-[oklch(0.13_0.03_162)] text-xl">{co}</p>
           {licenseNumber && <p className="text-slate-500 text-xs mt-0.5">License #{licenseNumber}</p>}
         </div>
         <div className="text-right text-sm text-slate-500">
           <p>{new Date().toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}</p>
           {phone && <p className="mt-0.5">{phone}</p>}
-          {website && <p className="text-[oklch(0.55_0.22_264)]">{website}</p>}
+          {website && <p className="text-[oklch(0.62_0.17_162)]">{website}</p>}
         </div>
       </div>
 
@@ -175,7 +175,7 @@ function LetterPage({ props }: { props: QMailPreviewProps }) {
           We recently conducted a satellite analysis of roofs in your neighborhood and noticed that your home may be due for a roof inspection or replacement. As a local, licensed roofing contractor, we wanted to reach out personally before you start shopping around.
         </p>
         <p>
-          Based on our satellite measurements of your property, we have prepared a <strong className="text-[oklch(0.17_0.03_255)]">personalized roofing estimate</strong> specifically for your home. This is not a generic quote — it is calculated from the actual measured square footage and pitch of your roof.
+          Based on our satellite measurements of your property, we have prepared a <strong className="text-[oklch(0.13_0.03_162)]">personalized roofing estimate</strong> specifically for your home. This is not a generic quote — it is calculated from the actual measured square footage and pitch of your roof.
         </p>
         <p>
           We believe in transparent pricing. The estimate on the following pages reflects our standard rates with no hidden fees. We are fully licensed, insured, and have served homeowners in your area for over a decade.
@@ -183,9 +183,9 @@ function LetterPage({ props }: { props: QMailPreviewProps }) {
         <p>
           We would love the opportunity to walk your property, confirm our measurements in person, and answer any questions you have. There is absolutely no obligation.
         </p>
-        <div className="bg-[oklch(0.96_0.04_264)] rounded-xl p-4 border border-[oklch(0.85_0.10_264)]">
-          <p className="font-semibold text-[oklch(0.17_0.03_255)] text-sm mb-1">📞 Call or text us to schedule your free inspection:</p>
-          <p className="text-[oklch(0.55_0.22_264)] font-bold text-lg">{phone || "(555) 867-5309"}</p>
+        <div className="bg-[oklch(0.95_0.04_162)] rounded-xl p-4 border border-[oklch(0.82_0.08_162)]">
+          <p className="font-semibold text-[oklch(0.13_0.03_162)] text-sm mb-1">📞 Call or text us to schedule your free inspection:</p>
+          <p className="text-[oklch(0.62_0.17_162)] font-bold text-lg">{phone || "(555) 867-5309"}</p>
           <p className="text-slate-500 text-xs mt-1">Mention this letter for a $150 discount on any job over $5,000.</p>
         </div>
       </div>
@@ -193,7 +193,7 @@ function LetterPage({ props }: { props: QMailPreviewProps }) {
       {/* Signature */}
       <div className="mt-6 pt-4 border-t border-slate-100">
         <p className="text-slate-500 text-sm">Sincerely,</p>
-        <p className="font-bold text-[oklch(0.17_0.03_255)] mt-1">{co}</p>
+        <p className="font-bold text-[oklch(0.13_0.03_162)] mt-1">{co}</p>
         <p className="text-slate-400 text-xs mt-0.5">Your Neighborhood Roofing Specialist</p>
       </div>
     </div>
@@ -226,7 +226,7 @@ function EstimatePage({ props }: { props: QMailPreviewProps }) {
       {/* Header */}
       <div className="flex items-center justify-between mb-5 pb-4 border-b border-slate-200">
         <div>
-          <h2 className="font-bold text-[oklch(0.17_0.03_255)] text-lg">Itemized Roofing Estimate</h2>
+          <h2 className="font-bold text-[oklch(0.13_0.03_162)] text-lg">Itemized Roofing Estimate</h2>
           <p className="text-slate-500 text-xs mt-0.5">Prepared by {co}</p>
         </div>
         <div className="text-right">
@@ -250,7 +250,7 @@ function EstimatePage({ props }: { props: QMailPreviewProps }) {
               <tr key={i} className="border-b border-slate-50">
                 <td className="py-2 text-slate-700 text-xs">{item.desc}</td>
                 <td className="py-2 text-right text-slate-500 text-xs whitespace-nowrap">{item.qty}</td>
-                <td className="py-2 text-right font-medium text-[oklch(0.17_0.03_255)] text-xs">${item.price.toLocaleString()}</td>
+                <td className="py-2 text-right font-medium text-[oklch(0.13_0.03_162)] text-xs">${item.price.toLocaleString()}</td>
               </tr>
             ))}
           </tbody>
@@ -258,7 +258,7 @@ function EstimatePage({ props }: { props: QMailPreviewProps }) {
       </div>
 
       {/* Totals */}
-      <div className="mt-4 border-t-2 border-[oklch(0.17_0.03_255)] pt-3">
+      <div className="mt-4 border-t-2 border-[oklch(0.13_0.03_162)] pt-3">
         <div className="flex justify-between text-sm mb-1">
           <span className="text-slate-500">Subtotal</span>
           <span className="font-medium">${totalPrice.toLocaleString()}</span>
@@ -268,8 +268,8 @@ function EstimatePage({ props }: { props: QMailPreviewProps }) {
           <span className="text-emerald-600 font-medium">-$150</span>
         </div>
         <div className="flex justify-between text-base font-bold mt-2 pt-2 border-t border-slate-200">
-          <span className="text-[oklch(0.17_0.03_255)]">Your Total Estimate</span>
-          <span className="text-[oklch(0.55_0.22_264)]">${(totalPrice - 150).toLocaleString()}</span>
+          <span className="text-[oklch(0.13_0.03_162)]">Your Total Estimate</span>
+          <span className="text-[oklch(0.62_0.17_162)]">${(totalPrice - 150).toLocaleString()}</span>
         </div>
         <p className="text-xs text-slate-400 mt-2">* Final price confirmed after in-person inspection. Financing available — ask about 0% for 12 months.</p>
       </div>
@@ -301,7 +301,7 @@ function WhyUsPage({ props }: { props: QMailPreviewProps }) {
 
   return (
     <div className="bg-white h-full flex flex-col px-8 py-6" style={{ fontFamily: "Georgia, serif" }}>
-      <h2 className="font-bold text-[oklch(0.17_0.03_255)] text-lg mb-1">Why Choose {co}?</h2>
+      <h2 className="font-bold text-[oklch(0.13_0.03_162)] text-lg mb-1">Why Choose {co}?</h2>
       <p className="text-slate-500 text-xs mb-5">We are not a national chain. We are your neighbors.</p>
 
       {/* Comparison table */}
@@ -310,7 +310,7 @@ function WhyUsPage({ props }: { props: QMailPreviewProps }) {
           <thead>
             <tr className="border-b border-slate-200">
               <th className="text-left text-xs text-slate-400 font-medium pb-2">What matters to you</th>
-              <th className="text-center text-xs font-bold text-[oklch(0.55_0.22_264)] pb-2 w-20">{co.split(" ")[0]}</th>
+              <th className="text-center text-xs font-bold text-[oklch(0.62_0.17_162)] pb-2 w-20">{co.split(" ")[0]}</th>
               <th className="text-center text-xs text-slate-400 font-medium pb-2 w-20">Others</th>
             </tr>
           </thead>
@@ -333,11 +333,11 @@ function WhyUsPage({ props }: { props: QMailPreviewProps }) {
         <div className="grid grid-cols-2 gap-3">
           {certifications.map((cert, i) => (
             <div key={i} className="flex items-center gap-2.5 bg-slate-50 rounded-lg p-2.5">
-              <div className="w-8 h-8 rounded-lg bg-[oklch(0.96_0.04_264)] flex items-center justify-center flex-shrink-0">
-                <cert.icon className="w-4 h-4 text-[oklch(0.55_0.22_264)]" />
+              <div className="w-8 h-8 rounded-lg bg-[oklch(0.95_0.04_162)] flex items-center justify-center flex-shrink-0">
+                <cert.icon className="w-4 h-4 text-[oklch(0.62_0.17_162)]" />
               </div>
               <div>
-                <p className="text-xs font-semibold text-[oklch(0.17_0.03_255)] leading-tight">{cert.label}</p>
+                <p className="text-xs font-semibold text-[oklch(0.13_0.03_162)] leading-tight">{cert.label}</p>
                 <p className="text-xs text-slate-400">{cert.sub}</p>
               </div>
             </div>
@@ -356,20 +356,20 @@ function ReferralPage({ props }: { props: QMailPreviewProps }) {
   return (
     <div className="bg-white h-full flex flex-col px-8 py-6" style={{ fontFamily: "Georgia, serif" }}>
       {/* Referral offer */}
-      <div className="bg-[oklch(0.17_0.03_255)] rounded-2xl p-6 mb-5 text-center">
-        <Gift className="w-8 h-8 text-[oklch(0.75_0.14_264)] mx-auto mb-3" />
+      <div className="bg-[oklch(0.13_0.03_162)] rounded-2xl p-6 mb-5 text-center">
+        <Gift className="w-8 h-8 text-[oklch(0.78_0.10_162)] mx-auto mb-3" />
         <h3 className="font-bold text-white text-lg mb-1">Refer a Neighbor, Earn $250</h3>
         <p className="text-slate-400 text-sm leading-relaxed">
           Know a neighbor who needs a new roof? Refer them to us. When they sign a contract, we send you a $250 check — no strings attached.
         </p>
         <div className="mt-4 bg-white/10 rounded-xl px-4 py-2">
-          <p className="text-[oklch(0.75_0.14_264)] text-sm font-medium">Call or text to refer: {phone || "(555) 867-5309"}</p>
+          <p className="text-[oklch(0.78_0.10_162)] text-sm font-medium">Call or text to refer: {phone || "(555) 867-5309"}</p>
         </div>
       </div>
 
       {/* Upsell services */}
       <div className="mb-5">
-        <h4 className="font-semibold text-[oklch(0.17_0.03_255)] text-sm mb-3">While we're on your roof, ask about:</h4>
+        <h4 className="font-semibold text-[oklch(0.13_0.03_162)] text-sm mb-3">While we're on your roof, ask about:</h4>
         <div className="space-y-2">
           {[
             { service: "Gutter replacement & guards", discount: "10% off when bundled" },
@@ -379,16 +379,16 @@ function ReferralPage({ props }: { props: QMailPreviewProps }) {
           ].map((item, i) => (
             <div key={i} className="flex items-center justify-between py-1.5 border-b border-slate-100">
               <span className="text-sm text-slate-700">{item.service}</span>
-              <span className="text-xs text-[oklch(0.55_0.22_264)] font-medium">{item.discount}</span>
+              <span className="text-xs text-[oklch(0.62_0.17_162)] font-medium">{item.discount}</span>
             </div>
           ))}
         </div>
       </div>
 
       {/* CTA */}
-      <div className="bg-[oklch(0.96_0.04_264)] rounded-xl p-4 text-center">
-        <p className="font-bold text-[oklch(0.17_0.03_255)] text-base mb-1">Ready to get started?</p>
-        <p className="text-[oklch(0.55_0.22_264)] font-bold text-lg">{phone || "(555) 867-5309"}</p>
+      <div className="bg-[oklch(0.95_0.04_162)] rounded-xl p-4 text-center">
+        <p className="font-bold text-[oklch(0.13_0.03_162)] text-base mb-1">Ready to get started?</p>
+        <p className="text-[oklch(0.62_0.17_162)] font-bold text-lg">{phone || "(555) 867-5309"}</p>
         {website && <p className="text-slate-400 text-xs mt-1">{website}</p>}
         <p className="text-slate-500 text-xs mt-2">Free inspection · No obligation · Same-week scheduling</p>
         <p className="text-slate-400 text-xs mt-1 font-medium">{co} · Licensed & Insured</p>
@@ -417,7 +417,7 @@ export function QMailPreview(props: QMailPreviewProps) {
         {/* Modal header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 flex-shrink-0">
           <div>
-            <h2 className="font-display font-bold text-[oklch(0.17_0.03_255)] text-lg">Q Mail Packet Preview</h2>
+            <h2 className="font-display font-bold text-[oklch(0.13_0.03_162)] text-lg">Prime Mail Packet Preview</h2>
             <p className="text-slate-500 text-sm mt-0.5">
               This is what {props.totalAddresses} homeowner{props.totalAddresses !== 1 ? "s" : ""} will receive in the mail
             </p>
@@ -440,7 +440,7 @@ export function QMailPreview(props: QMailPreviewProps) {
                 onClick={() => setPage(i)}
                 className={`flex items-center gap-2 px-3 py-2 rounded-lg text-left transition-all duration-150 ${
                   page === i
-                    ? "bg-[oklch(0.55_0.22_264)] text-white shadow-sm"
+                    ? "bg-[oklch(0.62_0.17_162)] text-white shadow-sm"
                     : "text-slate-500 hover:bg-slate-100 hover:text-slate-700"
                 }`}
               >
@@ -454,7 +454,7 @@ export function QMailPreview(props: QMailPreviewProps) {
             <div className="mt-auto pt-4 border-t border-slate-200">
               <div className="text-center">
                 <p className="text-xs text-slate-400 mb-1">Batch total</p>
-                <p className="font-mono font-bold text-sm text-[oklch(0.17_0.03_255)]">${props.totalQMailCost.toFixed(2)}</p>
+                <p className="font-mono font-bold text-sm text-[oklch(0.13_0.03_162)]">${props.totalQMailCost.toFixed(2)}</p>
                 <p className="text-xs text-slate-400">{props.totalAddresses} pieces</p>
               </div>
             </div>
@@ -486,7 +486,7 @@ export function QMailPreview(props: QMailPreviewProps) {
                     key={i}
                     onClick={() => setPage(i)}
                     className={`w-2 h-2 rounded-full transition-all duration-150 ${
-                      page === i ? "bg-[oklch(0.55_0.22_264)] w-4" : "bg-slate-300 hover:bg-slate-400"
+                      page === i ? "bg-[oklch(0.62_0.17_162)] w-4" : "bg-slate-300 hover:bg-slate-400"
                     }`}
                   />
                 ))}
@@ -495,7 +495,7 @@ export function QMailPreview(props: QMailPreviewProps) {
               {page < PAGES.length - 1 ? (
                 <button
                   onClick={() => setPage(p => Math.min(PAGES.length - 1, p + 1))}
-                  className="flex items-center gap-1.5 text-sm text-[oklch(0.55_0.22_264)] hover:text-[oklch(0.48_0.22_264)] font-medium transition-colors"
+                  className="flex items-center gap-1.5 text-sm text-[oklch(0.62_0.17_162)] hover:text-[oklch(0.45_0.15_162)] font-medium transition-colors"
                 >
                   Next
                   <ChevronRight className="w-4 h-4" />
@@ -510,8 +510,8 @@ export function QMailPreview(props: QMailPreviewProps) {
         {/* Footer CTA */}
         <div className="flex items-center justify-between px-6 py-4 border-t border-slate-100 bg-slate-50/50 flex-shrink-0">
           <div className="text-sm text-slate-500">
-            <span className="font-medium text-[oklch(0.17_0.03_255)]">{props.totalAddresses} packets</span> × $3.50 each =&nbsp;
-            <span className="font-mono font-bold text-[oklch(0.17_0.03_255)]">${props.totalQMailCost.toFixed(2)}</span>
+            <span className="font-medium text-[oklch(0.13_0.03_162)]">{props.totalAddresses} packets</span> × $3.50 each =&nbsp;
+            <span className="font-mono font-bold text-[oklch(0.13_0.03_162)]">${props.totalQMailCost.toFixed(2)}</span>
             <span className="text-slate-400"> total</span>
           </div>
           <div className="flex items-center gap-3">
@@ -522,7 +522,7 @@ export function QMailPreview(props: QMailPreviewProps) {
               onClick={props.onConfirm}
               disabled={props.confirming}
               size="sm"
-              className="bg-[oklch(0.55_0.22_264)] hover:bg-[oklch(0.48_0.22_264)] text-white font-semibold px-6"
+              className="bg-[oklch(0.62_0.17_162)] hover:bg-[oklch(0.45_0.15_162)] text-white font-semibold px-6"
             >
               {props.confirming ? (
                 <><span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin mr-2" />Submitting...</>

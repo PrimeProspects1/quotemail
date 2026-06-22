@@ -85,7 +85,7 @@ function AlertCard({ alert, onTarget }: { alert: Alert; onTarget: (alert: Alert)
             <EventIcon event={alert.event} />
           </div>
           <div>
-            <p className="font-semibold text-[oklch(0.17_0.03_255)] text-sm leading-tight">{alert.event}</p>
+            <p className="font-semibold text-[oklch(0.13_0.03_162)] text-sm leading-tight">{alert.event}</p>
             <p className="text-xs text-slate-500 mt-0.5 flex items-center gap-1">
               <MapPin className="w-3 h-3" />
               {alert.areaDesc.length > 60 ? alert.areaDesc.slice(0, 60) + "…" : alert.areaDesc}
@@ -111,7 +111,7 @@ function AlertCard({ alert, onTarget }: { alert: Alert; onTarget: (alert: Alert)
       <Button
         size="sm"
         onClick={() => onTarget(alert)}
-        className="w-full bg-[oklch(0.55_0.22_264)] hover:bg-[oklch(0.48_0.22_264)] text-white text-xs font-medium h-8"
+        className="w-full bg-[oklch(0.62_0.17_162)] hover:bg-[oklch(0.45_0.15_162)] text-white text-xs font-medium h-8"
       >
         <MapPin className="w-3.5 h-3.5 mr-1.5" />
         Target This Area
@@ -126,7 +126,7 @@ const TIPS = [
   {
     icon: Zap,
     title: "Strike While It's Fresh",
-    desc: "Homeowners are most receptive to roofing outreach within 2–4 weeks of a hail or wind event. Q Mail packets sent in this window see 3× higher response rates.",
+    desc: "Homeowners are most receptive to roofing outreach within 2–4 weeks of a hail or wind event. Prime Mail packets sent in this window see 3× higher response rates.",
   },
   {
     icon: Shield,
@@ -194,8 +194,8 @@ export default function StormData() {
           </Link>
           <div className="w-px h-4 bg-slate-200" />
           <div className="flex items-center gap-2">
-            <CloudLightning className="w-4 h-4 text-[oklch(0.55_0.22_264)]" />
-            <span className="font-semibold text-[oklch(0.17_0.03_255)] text-sm">Storm Data</span>
+            <CloudLightning className="w-4 h-4 text-[oklch(0.62_0.17_162)]" />
+            <span className="font-semibold text-[oklch(0.13_0.03_162)] text-sm">Storm Data</span>
           </div>
           <div className="ml-auto flex items-center gap-2">
             <a
@@ -215,11 +215,11 @@ export default function StormData() {
       <div className="container py-8">
         {/* Page title */}
         <div className="mb-8">
-          <h1 className="font-display font-bold text-[oklch(0.17_0.03_255)] text-2xl mb-1">
+          <h1 className="font-display font-bold text-[oklch(0.13_0.03_162)] text-2xl mb-1">
             Storm Event Targeting
           </h1>
           <p className="text-slate-500 text-sm">
-            Browse active NOAA severe weather alerts by state. Identify hail and wind damage areas, then launch a targeted Q Mail campaign before your competitors knock a single door.
+            Browse active NOAA severe weather alerts by state. Identify hail and wind damage areas, then launch a targeted Prime Mail campaign before your competitors knock a single door.
           </p>
         </div>
 
@@ -228,7 +228,7 @@ export default function StormData() {
           <div className="space-y-4">
             {/* State picker */}
             <div className="bg-white rounded-xl border border-slate-200 p-4">
-              <p className="font-semibold text-[oklch(0.17_0.03_255)] text-sm mb-3">Select State</p>
+              <p className="font-semibold text-[oklch(0.13_0.03_162)] text-sm mb-3">Select State</p>
               <div className="relative mb-3">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
                 <Input
@@ -245,7 +245,7 @@ export default function StormData() {
                     onClick={() => { setSelectedState(code); setTargetedAlert(null); }}
                     className={`w-full flex items-center justify-between px-3 py-1.5 rounded-lg text-sm transition-colors ${
                       selectedState === code
-                        ? "bg-[oklch(0.55_0.22_264)] text-white"
+                        ? "bg-[oklch(0.62_0.17_162)] text-white"
                         : "text-slate-600 hover:bg-slate-50"
                     }`}
                   >
@@ -261,10 +261,10 @@ export default function StormData() {
               {TIPS.map((tip, i) => (
                 <div key={i} className="bg-white rounded-xl border border-slate-200 p-4">
                   <div className="flex items-center gap-2.5 mb-2">
-                    <div className="w-7 h-7 rounded-lg bg-[oklch(0.96_0.04_264)] flex items-center justify-center">
-                      <tip.icon className="w-3.5 h-3.5 text-[oklch(0.55_0.22_264)]" />
+                    <div className="w-7 h-7 rounded-lg bg-[oklch(0.95_0.04_162)] flex items-center justify-center">
+                      <tip.icon className="w-3.5 h-3.5 text-[oklch(0.62_0.17_162)]" />
                     </div>
-                    <p className="font-semibold text-[oklch(0.17_0.03_255)] text-xs">{tip.title}</p>
+                    <p className="font-semibold text-[oklch(0.13_0.03_162)] text-xs">{tip.title}</p>
                   </div>
                   <p className="text-xs text-slate-500 leading-relaxed">{tip.desc}</p>
                 </div>
@@ -277,7 +277,7 @@ export default function StormData() {
             {/* Toolbar */}
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-3">
-                <h2 className="font-semibold text-[oklch(0.17_0.03_255)] text-base">
+                <h2 className="font-semibold text-[oklch(0.13_0.03_162)] text-base">
                   Active Alerts — {US_STATES.find(([c]) => c === selectedState)?.[1] ?? selectedState}
                 </h2>
                 {!alertsLoading && (
@@ -301,11 +301,11 @@ export default function StormData() {
 
             {/* Targeted alert banner */}
             {targetedAlert && (
-              <div className="bg-[oklch(0.96_0.04_264)] border border-[oklch(0.85_0.10_264)] rounded-xl p-4 mb-4 flex items-center justify-between gap-4">
+              <div className="bg-[oklch(0.95_0.04_162)] border border-[oklch(0.82_0.08_162)] rounded-xl p-4 mb-4 flex items-center justify-between gap-4">
                 <div className="flex items-center gap-3">
-                  <CheckCircle2 className="w-5 h-5 text-[oklch(0.55_0.22_264)] flex-shrink-0" />
+                  <CheckCircle2 className="w-5 h-5 text-[oklch(0.62_0.17_162)] flex-shrink-0" />
                   <div>
-                    <p className="font-semibold text-[oklch(0.17_0.03_255)] text-sm">
+                    <p className="font-semibold text-[oklch(0.13_0.03_162)] text-sm">
                       {targetedAlert.event} selected
                     </p>
                     <p className="text-xs text-slate-500 mt-0.5">
@@ -320,7 +320,7 @@ export default function StormData() {
                   <Button
                     size="sm"
                     onClick={handleCreateCampaign}
-                    className="bg-[oklch(0.55_0.22_264)] hover:bg-[oklch(0.48_0.22_264)] text-white text-xs h-8 font-semibold"
+                    className="bg-[oklch(0.62_0.17_162)] hover:bg-[oklch(0.45_0.15_162)] text-white text-xs h-8 font-semibold"
                   >
                     <MapPin className="w-3.5 h-3.5 mr-1.5" />
                     Open in Campaign Builder
@@ -352,7 +352,7 @@ export default function StormData() {
                 <div className="w-14 h-14 rounded-2xl bg-emerald-50 flex items-center justify-center mx-auto mb-4">
                   <CheckCircle2 className="w-7 h-7 text-emerald-500" />
                 </div>
-                <h3 className="font-semibold text-[oklch(0.17_0.03_255)] text-base mb-2">
+                <h3 className="font-semibold text-[oklch(0.13_0.03_162)] text-base mb-2">
                   No Active Roofing Alerts
                 </h3>
                 <p className="text-slate-500 text-sm max-w-sm mx-auto leading-relaxed">
@@ -365,7 +365,7 @@ export default function StormData() {
                   </p>
                 </div>
                 <Link href="/app">
-                  <Button size="sm" className="mt-4 bg-[oklch(0.55_0.22_264)] hover:bg-[oklch(0.48_0.22_264)] text-white font-medium">
+                  <Button size="sm" className="mt-4 bg-[oklch(0.62_0.17_162)] hover:bg-[oklch(0.45_0.15_162)] text-white font-medium">
                     Open Campaign Builder
                     <ChevronRight className="w-4 h-4 ml-1.5" />
                   </Button>
@@ -390,7 +390,7 @@ export default function StormData() {
                 href="https://www.weather.gov"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-[oklch(0.55_0.22_264)] hover:underline"
+                className="text-[oklch(0.62_0.17_162)] hover:underline"
               >
                 NOAA National Weather Service
               </a>
