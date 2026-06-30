@@ -166,3 +166,47 @@ export async function getDashboardStats(userId: number) {
   const totalSpend = campaignRows.reduce((sum, c) => sum + parseFloat(c.totalCost ?? "0"), 0);
   return { totalCampaigns: campaignRows.length, totalAddresses: addressRows.length, totalSpend, totalResponses: responseRows.length };
 }
+
+// ─── Mailer Templates ─────────────────────────────────────────────────────────
+import { mailerTemplates, InsertMailerTemplate } from "../drizzle/schema";
+
+export async function getMailerTemplates(userId: number) {
+  const db = await getDb(); if (!db) return [];
+  return db.select().from(mailerTemplates).where(eq(mailerTemplates.userId, userId)).orderBy(desc(mailerTemplates.createdAt));
+}
+
+export async function getMailerTemplateById(id: number, userId: number) {
+  const db = await getDb(); if (!db) return null;
+  const result = await db.select().from(mailerTemplates).where(and(eq(mailerTemplates.id, id), eq(mailerTemplates.userId, userId))).limit(1);
+  return result[0] ?? null;
+}
+
+export async function getDefaultMailerTemplate(userId: number) {
+  const db = await getDb(); if (!db) return null;
+  const result = await db.select().from(mailerTemplates).where(and(eq(mailerTemplates.userId, userId), eq(mailerTemplates.isDefault, true))).limit(1);
+  return result[0] ?? null;
+}
+
+export async function createMailerTemplate(data: InsertMailerTemplate) {
+  const db = await getDb(); if (!db) throw new Error("Database not available");
+  const [result] = await db.insert(mailerTemplates).values(data).$returningId();
+  return result;
+}
+
+export async function updateMailerTemplate(id: number, userId: number, data: Partial<InsertMailerTemplate>) {
+  const db = await getDb(); if (!db) return;
+  await db.update(mailerTemplates).set(data).where(and(eq(mailerTemplates.id, id), eq(mailerTemplates.userId, userId)));
+}
+
+export async function deleteMailerTemplate(id: number, userId: number) {
+  const db = await getDb(); if (!db) return;
+  await db.delete(mailerTemplates).where(and(eq(mailerTemplates.id, id), eq(mailerTemplates.userId, userId)));
+}
+
+export async function setDefaultMailerTemplate(id: number, userId: number) {
+  const db = await getDb(); if (!db) return;
+  // Clear all defaults for this user first
+  await db.update(mailerTemplates).set({ isDefault: false }).where(eq(mailerTemplates.userId, userId));
+  // Set the new default
+  await db.update(mailerTemplates).set({ isDefault: true }).where(and(eq(mailerTemplates.id, id), eq(mailerTemplates.userId, userId)));
+}

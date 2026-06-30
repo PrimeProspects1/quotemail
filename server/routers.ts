@@ -9,7 +9,10 @@ import {
   getContractorProfile, getDashboardStats, getPitchRates,
   recalcCampaignTotals, updateAddress, updateCampaign,
   upsertContractorProfile, upsertPitchRates,
+  getMailerTemplates, getMailerTemplateById, getDefaultMailerTemplate,
+  createMailerTemplate, updateMailerTemplate, deleteMailerTemplate, setDefaultMailerTemplate,
 } from "./db";
+import { makeRequest } from "./_core/map";
 import { z } from "zod";
 
 const authRouter = router({
@@ -266,6 +269,138 @@ const paymentsRouter = router({
     }),
 });
 
+// ─── Mailer Templates ──────────────────────────────────────────────────────
+const templateInputSchema = z.object({
+  name: z.string().min(1).max(255),
+  isDefault: z.boolean().optional(),
+  companyName: z.string().optional(),
+  tagline: z.string().optional(),
+  logoUrl: z.string().optional(),
+  logoKey: z.string().optional(),
+  primaryColor: z.string().optional(),
+  phone: z.string().optional(),
+  licenseNumber: z.string().optional(),
+  website: z.string().optional(),
+  coverHeadline: z.string().optional(),
+  coverSubheadline: z.string().optional(),
+  letterOpening: z.string().optional(),
+  letterBody: z.string().optional(),
+  letterClosing: z.string().optional(),
+  signatureName: z.string().optional(),
+  signatureTitle: z.string().optional(),
+  signatureImageUrl: z.string().optional(),
+  offerHeadline: z.string().optional(),
+  offerDetails: z.string().optional(),
+  ctaText: z.string().optional(),
+  warrantyYears: z.number().optional(),
+  warrantyDetails: z.string().optional(),
+  referralBonus: z.string().optional(),
+  referralDetails: z.string().optional(),
+});
+
+const templatesRouter = router({
+  list: protectedProcedure.query(async ({ ctx }) => getMailerTemplates(ctx.user.id)),
+  get: protectedProcedure.input(z.object({ id: z.number() })).query(async ({ ctx, input }) => getMailerTemplateById(input.id, ctx.user.id)),
+  getDefault: protectedProcedure.query(async ({ ctx }) => getDefaultMailerTemplate(ctx.user.id)),
+  create: protectedProcedure
+    .input(templateInputSchema)
+    .mutation(async ({ ctx, input }) => {
+      const result = await createMailerTemplate({ userId: ctx.user.id, ...input });
+      if (input.isDefault) await setDefaultMailerTemplate(result.id, ctx.user.id);
+      return { success: true, id: result.id };
+    }),
+  update: protectedProcedure
+    .input(z.object({ id: z.number() }).merge(templateInputSchema.partial()))
+    .mutation(async ({ ctx, input }) => {
+      const { id, ...data } = input;
+      await updateMailerTemplate(id, ctx.user.id, data);
+      if (data.isDefault) await setDefaultMailerTemplate(id, ctx.user.id);
+      return { success: true };
+    }),
+  delete: protectedProcedure
+    .input(z.object({ id: z.number() }))
+    .mutation(async ({ ctx, input }) => {
+      await deleteMailerTemplate(input.id, ctx.user.id);
+      return { success: true };
+    }),
+  setDefault: protectedProcedure
+    .input(z.object({ id: z.number() }))
+    .mutation(async ({ ctx, input }) => {
+      await setDefaultMailerTemplate(input.id, ctx.user.id);
+      return { success: true };
+    }),
+});
+
+// ─── Google Solar API ────────────────────────────────────────────────────────
+type SolarBuildingInsights = {
+  name: string;
+  center: { latitude: number; longitude: number };
+  roofSegmentStats: Array<{
+    pitchDegrees: number;
+    azimuthDegrees: number;
+    stats: { areaMeters2: number; sunshineQuantiles: number[] };
+    center: { latitude: number; longitude: number };
+    boundingBox: { sw: { latitude: number; longitude: number }; ne: { latitude: number; longitude: number } };
+    planeHeightAtCenterMeters: number;
+  }>;
+  solarPotential: {
+    maxArrayPanelsCount: number;
+    maxArrayAreaMeters2: number;
+    maxSunshineHoursPerYear: number;
+    carbonOffsetFactorKgPerMwh: number;
+    wholeRoofStats: { areaMeters2: number; sunshineQuantiles: number[] };
+    roofSegmentStats: Array<{
+      pitchDegrees: number;
+      azimuthDegrees: number;
+      stats: { areaMeters2: number; sunshineQuantiles: number[] };
+    }>;
+  };
+};
+
+const solarRouter = router({
+  getRoofMeasurements: protectedProcedure
+    .input(z.object({ lat: z.number(), lng: z.number() }))
+    .query(async ({ input }) => {
+      try {
+        const data = await makeRequest<SolarBuildingInsights>(
+          "/maps/api/solar/v1/buildingInsights:findClosest",
+          { "location.latitude": input.lat, "location.longitude": input.lng, requiredQuality: "LOW" }
+        );
+        // Sum all roof segment areas (m²) → convert to roofing squares (1 sq = 9.2903 m²)
+        const totalAreaM2 = (data.solarPotential?.wholeRoofStats?.areaMeters2) ??
+          (data.roofSegmentStats ?? []).reduce((sum, seg) => sum + (seg.stats?.areaMeters2 ?? 0), 0);
+        const roofSquares = totalAreaM2 / 9.2903;
+        const measuredSqFt = totalAreaM2 * 10.7639;
+        // Determine dominant pitch from largest segment
+        const segments = data.solarPotential?.roofSegmentStats ?? data.roofSegmentStats ?? [];
+        const dominantSegment = segments.reduce(
+          (max, seg) => (seg.stats?.areaMeters2 ?? 0) > (max.stats?.areaMeters2 ?? 0) ? seg : max,
+          segments[0] ?? { pitchDegrees: 0, stats: { areaMeters2: 0 } }
+        );
+        const pitchDeg = dominantSegment?.pitchDegrees ?? 0;
+        // Convert pitch degrees to standard roofing pitch notation
+        let pitch: "flat" | "4/12" | "6/12" | "8/12" | "10/12+";
+        if (pitchDeg < 5) pitch = "flat";
+        else if (pitchDeg < 22) pitch = "4/12";
+        else if (pitchDeg < 30) pitch = "6/12";
+        else if (pitchDeg < 38) pitch = "8/12";
+        else pitch = "10/12+";
+        return {
+          success: true,
+          roofSquares: parseFloat(roofSquares.toFixed(2)),
+          measuredSqFt: parseFloat(measuredSqFt.toFixed(0)),
+          pitch,
+          pitchDegrees: pitchDeg,
+          totalAreaM2: parseFloat(totalAreaM2.toFixed(2)),
+          segmentCount: segments.length,
+        };
+      } catch (err) {
+        // Solar API may not have data for all addresses — return graceful fallback
+        return { success: false, error: String(err), roofSquares: null, measuredSqFt: null, pitch: null };
+      }
+    }),
+});
+
 const dashboardRouter = router({
   stats: protectedProcedure.query(async ({ ctx }) => getDashboardStats(ctx.user.id)),
   recentCampaigns: protectedProcedure.query(async ({ ctx }) => {
@@ -284,6 +419,8 @@ export const appRouter = router({
   dashboard: dashboardRouter,
   storm: stormRouter,
   payments: paymentsRouter,
+  templates: templatesRouter,
+  solar: solarRouter,
 });
 
 export type AppRouter = typeof appRouter;

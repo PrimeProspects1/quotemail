@@ -11,6 +11,7 @@ import Settings from "./pages/Settings";
 import StormData from "./pages/StormData";
 import Onboarding from "./pages/Onboarding";
 import Fulfillment from "./pages/Fulfillment";
+import TemplateLibrary from "./pages/TemplateLibrary";
 
 function Router() {
   return (
@@ -23,6 +24,7 @@ function Router() {
       <Route path={"/storm-data"} component={StormData} />
       <Route path={"/onboarding"} component={Onboarding} />
       <Route path={"/fulfillment"} component={Fulfillment} />
+      <Route path={"/templates"} component={TemplateLibrary} />
       <Route path={"/404"} component={NotFound} />
       <Route component={NotFound} />
     </Switch>

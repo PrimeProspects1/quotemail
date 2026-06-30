@@ -14,7 +14,7 @@ import {
   MapPin, Upload, Search, Plus, Trash2, Settings2, Mail,
   ChevronRight, X, Check, AlertCircle, BarChart3, Package,
   FileSpreadsheet, Ruler, DollarSign, ArrowLeft, Loader2,
-  RefreshCw,
+  RefreshCw, FileDown, Eye,
 } from "lucide-react";
 import { MapView } from "@/components/Map";
 import { QMailPreview } from "@/components/QMailPreview";
@@ -153,6 +153,31 @@ function AddressRow({ addr, rates, onRemove, onMeasure, onPitchChange, removing 
   const sqft = addr.measuredSqFt ? parseFloat(addr.measuredSqFt) : null;
   const pitchKey = addr.pitch ? (DB_TO_PITCH_KEY[addr.pitch] ?? "6_12") : "6_12";
   const price = sqft ? calcPrice(sqft, pitchKey, rates) : null;
+  const [pdfLoading, setPdfLoading] = useState(false);
+
+  const handlePreviewPdf = () => {
+    window.open(`/api/mailer/preview/${addr.id}`, "_blank");
+  };
+
+  const handleDownloadPdf = async () => {
+    setPdfLoading(true);
+    try {
+      const res = await fetch(`/api/mailer/download/${addr.id}`, { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to generate PDF");
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${addr.fullAddress.replace(/[^a-zA-Z0-9]/g, "_")}_Mailer.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
+      toast.success("Mailer PDF downloaded!");
+    } catch {
+      toast.error("Could not generate mailer PDF");
+    } finally {
+      setPdfLoading(false);
+    }
+  };
 
   return (
     <div className="flex items-center gap-3 py-3 border-b border-slate-100 last:border-0 group">
@@ -188,6 +213,26 @@ function AddressRow({ addr, rates, onRemove, onMeasure, onPitchChange, removing 
         <span className="font-mono font-bold text-sm text-[oklch(0.62_0.17_162)] flex-shrink-0">
           ${price.toLocaleString()}
         </span>
+      )}
+      {/* PDF action buttons — visible on hover when measured */}
+      {sqft && (
+        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+          <button
+            onClick={handlePreviewPdf}
+            title="Preview mailer PDF"
+            className="w-6 h-6 rounded hover:bg-blue-50 flex items-center justify-center"
+          >
+            <Eye className="w-3.5 h-3.5 text-blue-400" />
+          </button>
+          <button
+            onClick={handleDownloadPdf}
+            disabled={pdfLoading}
+            title="Download mailer PDF"
+            className="w-6 h-6 rounded hover:bg-green-50 flex items-center justify-center disabled:opacity-50"
+          >
+            {pdfLoading ? <Loader2 className="w-3 h-3 animate-spin text-slate-400" /> : <FileDown className="w-3.5 h-3.5 text-green-500" />}
+          </button>
+        </div>
       )}
       <button
         onClick={() => onRemove(addr.id)}
@@ -283,6 +328,13 @@ export default function AppPage() {
   });
 
   const createCheckout = trpc.payments.createCheckout.useMutation();
+
+  // ── Solar API measurement (called after pin drop or address search) ──
+  const solarMeasure = trpc.solar.getRoofMeasurements.useQuery(
+    { lat: 0, lng: 0 },
+    { enabled: false } // Only called imperatively via utils.solar.getRoofMeasurements.fetch()
+  );
+  const solarUtils = trpc.useUtils();
 
   // ── Ensure a campaign exists before saving addresses ──
   const ensureCampaign = useCallback(async (): Promise<number> => {

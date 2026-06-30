@@ -133,3 +133,45 @@ export const responseEvents = mysqlTable("response_events", {
 
 export type ResponseEvent = typeof responseEvents.$inferSelect;
 export type InsertResponseEvent = typeof responseEvents.$inferInsert;
+
+// ─── Mailer Templates ─────────────────────────────────────────────────────────
+export const mailerTemplates = mysqlTable("mailer_templates", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  name: varchar("name", { length: 255 }).notNull(),
+  isDefault: boolean("isDefault").default(false).notNull(),
+  // Branding
+  companyName: varchar("companyName", { length: 255 }),
+  tagline: text("tagline"),
+  logoUrl: text("logoUrl"),
+  logoKey: text("logoKey"),
+  primaryColor: varchar("primaryColor", { length: 16 }).default("#0EA875"),
+  phone: varchar("phone", { length: 32 }),
+  licenseNumber: varchar("licenseNumber", { length: 64 }),
+  website: varchar("website", { length: 255 }),
+  // Cover page
+  coverHeadline: text("coverHeadline"),
+  coverSubheadline: text("coverSubheadline"),
+  // Letter page
+  letterOpening: text("letterOpening"),
+  letterBody: text("letterBody"),
+  letterClosing: text("letterClosing"),
+  signatureName: varchar("signatureName", { length: 255 }),
+  signatureTitle: varchar("signatureTitle", { length: 255 }),
+  signatureImageUrl: text("signatureImageUrl"),
+  // Offer / CTA
+  offerHeadline: text("offerHeadline"),
+  offerDetails: text("offerDetails"),
+  ctaText: varchar("ctaText", { length: 128 }),
+  // Warranty
+  warrantyYears: int("warrantyYears").default(10),
+  warrantyDetails: text("warrantyDetails"),
+  // Referral page
+  referralBonus: varchar("referralBonus", { length: 128 }),
+  referralDetails: text("referralDetails"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type MailerTemplate = typeof mailerTemplates.$inferSelect;
+export type InsertMailerTemplate = typeof mailerTemplates.$inferInsert;

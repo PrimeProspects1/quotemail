@@ -64,3 +64,17 @@
 
 ## Remaining
 - [x] Stripe payments — charge $3.50/piece at batch approval (Stripe Checkout, webhook, payment success/cancel redirect)
+
+## New Features (Jun 22)
+- [ ] Template Library — create, edit, preview, manage branded mailer templates per contractor
+- [ ] Google Solar API — auto-pull roof squares + pitch when pin is dropped on map
+- [ ] Connect template selection to order flow and QMailPreview
+
+## Dynamic PDF Mailer Generator (Jun 30)
+- [x] 5-page PDF mailer replicating Ridgecap GC template layout
+- [x] Auto-fill company name, phone, website, address, license number from contractor profile
+- [x] Auto-fill customer name, address, estimate price, roof sq/ft, pitch from address record
+- [x] Custom QR code generated per-mailer pointing to company website
+- [x] Express routes: GET /api/mailer/preview/:addressId (inline) and /api/mailer/download/:addressId (attachment)
+- [x] Eye (preview) and Download buttons added to each measured address row in AppPage
+- [x] Vitest tests: 4 tests covering PDF generation, magic bytes, edge cases
