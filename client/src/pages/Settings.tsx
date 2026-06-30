@@ -7,9 +7,9 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Link } from "wouter";
-import { ArrowLeft, Building2, DollarSign, Save, Loader2, Mail } from "lucide-react";
+import { ArrowLeft, Building2, DollarSign, Save, Loader2, Mail, Upload, ImageIcon, X } from "lucide-react";
 
 export default function Settings() {
   const { user, loading, isAuthenticated } = useAuth();
@@ -25,6 +25,9 @@ export default function Settings() {
   const [profileForm, setProfileForm] = useState({
     companyName: "", phone: "", licenseNumber: "", website: "", tagline: "",
   });
+  const [logoUrl, setLogoUrl] = useState<string | null>(null);
+  const [logoUploading, setLogoUploading] = useState(false);
+  const logoInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (profile) {
@@ -35,6 +38,7 @@ export default function Settings() {
         website: profile.website ?? "",
         tagline: profile.tagline ?? "",
       });
+      setLogoUrl(profile.logoUrl ?? null);
     }
   }, [profile]);
 
@@ -180,6 +184,84 @@ export default function Settings() {
                   <Input id="tagline" placeholder="Trusted Roofing Since 2005" value={profileForm.tagline}
                     onChange={e => setProfileForm(p => ({ ...p, tagline: e.target.value }))} />
                 </div>
+
+                {/* Logo Upload */}
+                <div className="space-y-2">
+                  <Label>Company Logo</Label>
+                  <p className="text-xs text-slate-400">Appears on every Prime Mail packet. PNG or JPG, max 5 MB.</p>
+                  <div className="flex items-center gap-4">
+                    {logoUrl ? (
+                      <div className="relative w-20 h-20 rounded-lg border border-slate-200 bg-slate-50 flex items-center justify-center overflow-hidden flex-shrink-0">
+                        <img src={logoUrl} alt="Company logo" className="w-full h-full object-contain p-1" />
+                        <button
+                          onClick={() => {
+                            setLogoUrl(null);
+                            saveProfile.mutate({ ...profileForm, logoUrl: "", logoKey: "" });
+                          }}
+                          className="absolute top-0.5 right-0.5 w-5 h-5 rounded-full bg-red-500 text-white flex items-center justify-center hover:bg-red-600"
+                          title="Remove logo"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="w-20 h-20 rounded-lg border-2 border-dashed border-slate-200 bg-slate-50 flex items-center justify-center flex-shrink-0">
+                        <ImageIcon className="w-7 h-7 text-slate-300" />
+                      </div>
+                    )}
+                    <div className="flex flex-col gap-2">
+                      <input
+                        ref={logoInputRef}
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={async (e) => {
+                          const file = e.target.files?.[0];
+                          if (!file) return;
+                          if (file.size > 5 * 1024 * 1024) {
+                            toast.error("Logo must be under 5 MB");
+                            return;
+                          }
+                          setLogoUploading(true);
+                          try {
+                            const formData = new FormData();
+                            formData.append("logo", file);
+                            const res = await fetch("/api/profile/logo", {
+                              method: "POST",
+                              body: formData,
+                              credentials: "include",
+                            });
+                            if (!res.ok) throw new Error("Upload failed");
+                            const data = await res.json();
+                            setLogoUrl(data.logoUrl);
+                            toast.success("Logo uploaded successfully!");
+                            utils.profile.get.invalidate();
+                          } catch {
+                            toast.error("Failed to upload logo");
+                          } finally {
+                            setLogoUploading(false);
+                            e.target.value = "";
+                          }
+                        }}
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        disabled={logoUploading}
+                        onClick={() => logoInputRef.current?.click()}
+                        className="gap-2 text-sm"
+                      >
+                        {logoUploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
+                        {logoUrl ? "Replace Logo" : "Upload Logo"}
+                      </Button>
+                      {logoUrl && (
+                        <p className="text-xs text-emerald-600 font-medium">✓ Logo saved to your profile</p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
                 <div className="flex justify-end pt-2">
                   <Button
                     onClick={() => saveProfile.mutate(profileForm)}
