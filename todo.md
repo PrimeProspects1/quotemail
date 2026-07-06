@@ -78,3 +78,12 @@
 - [x] Express routes: GET /api/mailer/preview/:addressId (inline) and /api/mailer/download/:addressId (attachment)
 - [x] Eye (preview) and Download buttons added to each measured address row in AppPage
 - [x] Vitest tests: 4 tests covering PDF generation, magic bytes, edge cases
+
+## Google Solar API Integration (Jul 6)
+- [x] Replace fake estimateSqft() with real Google Solar API calls via trpc.solar.getRoofMeasurements
+- [x] measureWithSolar() helper: calls Solar API, falls back to seeded estimate if no data
+- [x] Pin drop: uses real Solar sq ft + pitch instead of random estimate
+- [x] Address search: uses real Solar sq ft + pitch instead of random estimate
+- [x] Measure button (single): uses real Solar sq ft + pitch, shows "Google Solar" in toast
+- [x] Measure All: uses real Solar for each address, reports Solar vs estimated count in toast
+- [x] TypeScript compiles cleanly with no errors

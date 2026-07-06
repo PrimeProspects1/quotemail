@@ -72,6 +72,7 @@ const DB_TO_PITCH_KEY: Record<string, string> = {
 };
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
+// NOTE: estimateSqft is kept only as a fallback when the Solar API has no data for an address.
 function estimateSqft(lat: number, lng: number): number {
   const seed = Math.abs(Math.sin(lat * 1000 + lng * 1000));
   return Math.round((1200 + seed * 2400) / 10) * 10;
@@ -329,12 +330,32 @@ export default function AppPage() {
 
   const createCheckout = trpc.payments.createCheckout.useMutation();
 
-  // ── Solar API measurement (called after pin drop or address search) ──
-  const solarMeasure = trpc.solar.getRoofMeasurements.useQuery(
-    { lat: 0, lng: 0 },
-    { enabled: false } // Only called imperatively via utils.solar.getRoofMeasurements.fetch()
-  );
+  // ── Solar API measurement helper ──
+  // Calls the real Google Solar API; falls back to the seeded estimate if Solar has no data.
   const solarUtils = trpc.useUtils();
+  const measureWithSolar = useCallback(async (
+    lat: number,
+    lng: number
+  ): Promise<{ sqft: number; pitch: "flat" | "4/12" | "6/12" | "8/12" | "10/12+"; pitchKey: string; fromSolar: boolean }> => {
+    try {
+      const result = await solarUtils.solar.getRoofMeasurements.fetch({ lat, lng });
+      if (result.success && result.measuredSqFt && result.pitch) {
+        const pitchMap: Record<string, string> = {
+          flat: "flat", "4/12": "4_12", "6/12": "6_12", "8/12": "8_12", "10/12+": "10_12",
+        };
+        return {
+          sqft: result.measuredSqFt,
+          pitch: result.pitch as "flat" | "4/12" | "6/12" | "8/12" | "10/12+",
+          pitchKey: pitchMap[result.pitch] ?? "6_12",
+          fromSolar: true,
+        };
+      }
+    } catch {
+      // Solar API unavailable — fall through to estimate
+    }
+    // Fallback: seeded estimate with default 6/12 pitch
+    return { sqft: estimateSqft(lat, lng), pitch: "6/12", pitchKey: "6_12", fromSolar: false };
+  }, [solarUtils]);
 
   // ── Ensure a campaign exists before saving addresses ──
   const ensureCampaign = useCallback(async (): Promise<number> => {
@@ -369,8 +390,6 @@ export default function AppPage() {
 
         try {
           const cid = await ensureCampaign();
-          const sqft = estimateSqft(lat, lng);
-          const price = calcPrice(sqft, "6_12", rates);
 
           await addAddress.mutateAsync({
             campaignId: cid,
@@ -380,19 +399,22 @@ export default function AppPage() {
             source: "pin_drop",
           });
 
-          // Immediately measure after adding
+          // Immediately measure after adding using real Solar API
           const fresh = await utils.addresses.list.fetch({ campaignId: cid });
           const newEntry = fresh.find(a => a.fullAddress === address && !a.measuredSqFt);
           if (newEntry) {
+            const { sqft, pitch, pitchKey, fromSolar } = await measureWithSolar(lat, lng);
+            const price = calcPrice(sqft, pitchKey, rates);
             await updateMeasurement.mutateAsync({
               id: newEntry.id,
               campaignId: cid,
               measuredSqFt: sqft.toString(),
               roofSquares: (sqft / 100).toFixed(2),
-              pitch: "6/12",
+              pitch,
               estimatePrice: price.toString(),
               status: "estimated",
             });
+            if (!fromSolar) console.warn("[Solar] No data for", address, "— used estimate fallback");
           }
 
           // Drop marker on map
@@ -443,8 +465,6 @@ export default function AppPage() {
 
       try {
         const cid = await ensureCampaign();
-        const sqft = estimateSqft(lat, lng);
-        const price = calcPrice(sqft, "6_12", rates);
 
         await addAddress.mutateAsync({
           campaignId: cid,
@@ -457,15 +477,18 @@ export default function AppPage() {
         const fresh = await utils.addresses.list.fetch({ campaignId: cid });
         const newEntry = fresh.find(a => a.fullAddress === address && !a.measuredSqFt);
         if (newEntry) {
+          const { sqft, pitch, pitchKey, fromSolar } = await measureWithSolar(lat, lng);
+          const price = calcPrice(sqft, pitchKey, rates);
           await updateMeasurement.mutateAsync({
             id: newEntry.id,
             campaignId: cid,
             measuredSqFt: sqft.toString(),
             roofSquares: (sqft / 100).toFixed(2),
-            pitch: "6/12",
+            pitch,
             estimatePrice: price.toString(),
             status: "estimated",
           });
+          if (!fromSolar) console.warn("[Solar] No data for", address, "— used estimate fallback");
         }
 
         // Pan map to address
@@ -554,46 +577,53 @@ export default function AppPage() {
     if (!addr.lat || !addr.lng || !campaignId) return;
     const lat = parseFloat(addr.lat);
     const lng = parseFloat(addr.lng);
-    const sqft = estimateSqft(lat, lng);
-    const price = calcPrice(sqft, "6_12", rates);
     try {
+      const { sqft, pitch, pitchKey, fromSolar } = await measureWithSolar(lat, lng);
+      const price = calcPrice(sqft, pitchKey, rates);
       await updateMeasurement.mutateAsync({
         id: addr.id,
         campaignId,
         measuredSqFt: sqft.toString(),
         roofSquares: (sqft / 100).toFixed(2),
-        pitch: "6/12",
+        pitch,
         estimatePrice: price.toString(),
         status: "estimated",
       });
-      toast.success("Roof measured from satellite imagery");
+      toast.success(fromSolar ? "Roof measured from Google Solar satellite data" : "Roof measured (estimated — no Solar data for this address)");
     } catch {
       toast.error("Failed to save measurement");
     }
-  }, [campaignId, rates, updateMeasurement]);
+  }, [campaignId, rates, updateMeasurement, measureWithSolar]);
 
   // ── Measure all ──
   const handleMeasureAll = useCallback(async () => {
     if (!campaignId) return;
     const unmeasured = dbAddresses.filter(a => !a.measuredSqFt);
+    let solarCount = 0;
     for (const addr of unmeasured) {
       if (!addr.lat || !addr.lng) continue;
       const lat = parseFloat(addr.lat);
       const lng = parseFloat(addr.lng);
-      const sqft = estimateSqft(lat, lng);
-      const price = calcPrice(sqft, "6_12", rates);
+      const { sqft, pitch, pitchKey, fromSolar } = await measureWithSolar(lat, lng);
+      if (fromSolar) solarCount++;
+      const price = calcPrice(sqft, pitchKey, rates);
       await updateMeasurement.mutateAsync({
         id: addr.id,
         campaignId,
         measuredSqFt: sqft.toString(),
         roofSquares: (sqft / 100).toFixed(2),
-        pitch: "6/12",
+        pitch,
         estimatePrice: price.toString(),
         status: "estimated",
       });
     }
-    toast.success(`Measured ${unmeasured.length} roofs`);
-  }, [campaignId, dbAddresses, rates, updateMeasurement]);
+    const fallbackCount = unmeasured.length - solarCount;
+    if (fallbackCount > 0) {
+      toast.success(`Measured ${unmeasured.length} roofs (${solarCount} from Google Solar, ${fallbackCount} estimated)`);
+    } else {
+      toast.success(`Measured ${unmeasured.length} roofs from Google Solar satellite data`);
+    }
+  }, [campaignId, dbAddresses, rates, updateMeasurement, measureWithSolar]);
 
   // ── Update pitch ──
   const handlePitchChange = useCallback(async (addr: DBAddress, pitchKey: string) => {
