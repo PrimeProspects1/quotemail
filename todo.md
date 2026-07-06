@@ -95,3 +95,13 @@
 - [x] Show pitch label and sq ft on hover/click per segment
 - [x] Wire overlay to appear after a successful Solar measurement on any address pin
 - [x] Add toggle button to show/hide the overlay
+
+## Mobile Map Redesign — Drive & Mark (Jul 6)
+- [x] Full-screen satellite map on mobile (100dvh, map fills entire screen)
+- [x] GPS Follow Me mode — locks map to current location, auto-pans as you drive
+- [x] Large floating GPS button (bottom-right) to toggle follow mode
+- [x] Tap-to-pin: single tap on map drops pin + auto-measures roof
+- [x] Floating bottom drawer for address list (slides up/down, doesn't block map)
+- [x] Thumb-friendly controls: large buttons, bottom-anchored toolbar
+- [x] Speed/heading indicator when GPS follow is active
+- [x] Desktop layout preserved (side panel stays on wide screens)

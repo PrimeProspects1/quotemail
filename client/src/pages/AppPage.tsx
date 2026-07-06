@@ -1,7 +1,7 @@
-/*
- * PrimeMail — Contractor App Page (Full-Stack)
- * All pin drops, address searches, CSV imports, measurements, and deletes
- * are persisted to the database via tRPC mutations.
+/**
+ * PrimeMail — Contractor App Page (Mobile-First)
+ * Mobile: full-screen satellite map + GPS follow mode + bottom drawer
+ * Desktop: side-panel layout (preserved)
  */
 
 import { useState, useCallback, useRef, useEffect } from "react";
@@ -9,18 +9,26 @@ import { Link, useParams } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import {
+  Drawer,
+  DrawerContent,
+  DrawerHeader,
+  DrawerTitle,
+} from "@/components/ui/drawer";
 import { toast } from "sonner";
 import {
   MapPin, Upload, Search, Plus, Trash2, Settings2, Mail,
   ChevronRight, X, Check, AlertCircle, BarChart3, Package,
   FileSpreadsheet, Ruler, DollarSign, ArrowLeft, Loader2,
-  RefreshCw, FileDown, Eye, Layers,
+  RefreshCw, FileDown, Eye, Layers, Navigation, Navigation2,
+  Crosshair, ChevronUp, List,
 } from "lucide-react";
 import { MapView } from "@/components/Map";
 import { QMailPreview } from "@/components/QMailPreview";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { getLoginUrl } from "@/const";
+import { useIsMobile } from "@/hooks/useMobile";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface RoofSegment {
@@ -85,7 +93,6 @@ const DB_TO_PITCH_KEY: Record<string, string> = {
 };
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
-// NOTE: estimateSqft is kept only as a fallback when the Solar API has no data for an address.
 function estimateSqft(lat: number, lng: number): number {
   const seed = Math.abs(Math.sin(lat * 1000 + lng * 1000));
   return Math.round((1200 + seed * 2400) / 10) * 10;
@@ -97,6 +104,11 @@ function calcPrice(sqft: number, pitchKey: string, rates: PitchRate[]): number {
   return Math.round(squares * r.rate * r.factor);
 }
 
+function speedLabel(mps: number): string {
+  const mph = mps * 2.237;
+  return `${Math.round(mph)} mph`;
+}
+
 // ─── Pricing Settings Panel ───────────────────────────────────────────────────
 function PricingSettings({ rates, setRates, onClose }: {
   rates: PitchRate[];
@@ -104,39 +116,32 @@ function PricingSettings({ rates, setRates, onClose }: {
   onClose: () => void;
 }) {
   const [local, setLocal] = useState(rates);
-  const update = (key: string, val: number) =>
-    setLocal(prev => prev.map(r => r.key === key ? { ...r, rate: val } : r));
-
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg mx-4 p-8">
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <h3 className="font-display font-bold text-xl text-[oklch(0.13_0.03_162)]">Your Pricing Rates</h3>
-            <p className="text-sm text-slate-500 mt-0.5">Set your price per square (100 sq ft) for each pitch tier</p>
-          </div>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6">
+        <div className="flex items-center justify-between mb-5">
+          <h3 className="font-display font-bold text-lg text-[oklch(0.13_0.03_162)]">Pricing Rates</h3>
           <button onClick={onClose} className="w-8 h-8 rounded-lg hover:bg-slate-100 flex items-center justify-center">
             <X className="w-4 h-4 text-slate-500" />
           </button>
         </div>
-        <div className="space-y-4 mb-8">
-          {local.map(r => (
-            <div key={r.key} className="flex items-center gap-4">
-              <div className="flex-1">
-                <p className="text-sm font-medium text-[oklch(0.13_0.03_162)]">{r.label}</p>
-                <p className="text-xs text-slate-400 font-mono">Factor: ×{r.factor}</p>
-              </div>
-              <div className="flex items-center gap-2">
+        <div className="space-y-3 mb-5">
+          {local.map((r, i) => (
+            <div key={r.key} className="flex items-center gap-3">
+              <span className="text-sm text-slate-600 w-40 flex-shrink-0">{r.label}</span>
+              <div className="flex items-center gap-1 flex-1">
                 <span className="text-slate-400 text-sm">$</span>
                 <Input
                   type="number"
                   value={r.rate}
-                  onChange={e => update(r.key, Number(e.target.value))}
-                  className="w-24 text-right text-sm"
-                  min={100}
-                  max={2000}
+                  onChange={e => {
+                    const next = [...local];
+                    next[i] = { ...next[i], rate: Number(e.target.value) };
+                    setLocal(next);
+                  }}
+                  className="h-8 text-sm"
                 />
-                <span className="text-slate-400 text-xs whitespace-nowrap">/square</span>
+                <span className="text-slate-400 text-xs">/sq</span>
               </div>
             </div>
           ))}
@@ -144,7 +149,7 @@ function PricingSettings({ rates, setRates, onClose }: {
         <div className="flex gap-3">
           <Button variant="outline" onClick={onClose} className="flex-1">Cancel</Button>
           <Button
-            onClick={() => { setRates(local); onClose(); toast.success("Pricing rates saved"); }}
+            onClick={() => { setRates(local); onClose(); }}
             className="flex-1 bg-[oklch(0.62_0.17_162)] hover:bg-[oklch(0.45_0.15_162)] text-white"
           >
             Save Rates
@@ -155,14 +160,15 @@ function PricingSettings({ rates, setRates, onClose }: {
   );
 }
 
-// ─── Address Row ──────────────────────────────────────────────────────────────
-function AddressRow({ addr, rates, onRemove, onMeasure, onPitchChange, removing }: {
+// ─── Address Row (shared desktop + mobile) ────────────────────────────────────
+function AddressRow({ addr, rates, onRemove, onMeasure, onPitchChange, removing, isMobile }: {
   addr: DBAddress;
   rates: PitchRate[];
   onRemove: (id: number) => void;
   onMeasure: (addr: DBAddress) => void;
   onPitchChange: (addr: DBAddress, pitch: string) => void;
   removing: boolean;
+  isMobile?: boolean;
 }) {
   const sqft = addr.measuredSqFt ? parseFloat(addr.measuredSqFt) : null;
   const pitchKey = addr.pitch ? (DB_TO_PITCH_KEY[addr.pitch] ?? "6_12") : "6_12";
@@ -193,6 +199,72 @@ function AddressRow({ addr, rates, onRemove, onMeasure, onPitchChange, removing 
     }
   };
 
+  if (isMobile) {
+    // Mobile: larger touch targets, always-visible actions
+    return (
+      <div className="flex items-start gap-3 py-4 border-b border-slate-100 last:border-0">
+        <div className="w-2.5 h-2.5 rounded-full bg-[oklch(0.62_0.17_162)] flex-shrink-0 mt-1.5" />
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-medium text-[oklch(0.13_0.03_162)] leading-snug">{addr.fullAddress}</p>
+          <div className="flex flex-wrap items-center gap-2 mt-1.5">
+            {sqft ? (
+              <span className="text-xs font-mono text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full">{sqft.toLocaleString()} sq ft</span>
+            ) : (
+              <button
+                onClick={() => onMeasure(addr)}
+                className="text-xs text-white bg-[oklch(0.62_0.17_162)] px-3 py-1 rounded-full font-medium flex items-center gap-1 active:scale-95 transition-transform"
+              >
+                <Ruler className="w-3 h-3" /> Measure
+              </button>
+            )}
+            {sqft && (
+              <select
+                value={pitchKey}
+                onChange={e => onPitchChange(addr, e.target.value)}
+                className="text-xs border border-slate-200 rounded-full px-2 py-1 text-slate-600 bg-white"
+              >
+                {rates.map(r => <option key={r.key} value={r.key}>{r.label}</option>)}
+              </select>
+            )}
+          </div>
+          {/* Mobile action row */}
+          <div className="flex items-center gap-2 mt-2">
+            {price !== null && (
+              <span className="font-mono font-bold text-sm text-[oklch(0.62_0.17_162)]">${price.toLocaleString()}</span>
+            )}
+            {sqft && (
+              <>
+                <button
+                  onClick={handlePreviewPdf}
+                  className="flex items-center gap-1 text-xs text-blue-500 bg-blue-50 px-2.5 py-1 rounded-full font-medium active:scale-95 transition-transform"
+                >
+                  <Eye className="w-3 h-3" /> Preview
+                </button>
+                <button
+                  onClick={handleDownloadPdf}
+                  disabled={pdfLoading}
+                  className="flex items-center gap-1 text-xs text-green-600 bg-green-50 px-2.5 py-1 rounded-full font-medium active:scale-95 transition-transform disabled:opacity-50"
+                >
+                  {pdfLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : <FileDown className="w-3 h-3" />}
+                  PDF
+                </button>
+              </>
+            )}
+            <button
+              onClick={() => onRemove(addr.id)}
+              disabled={removing}
+              className="flex items-center gap-1 text-xs text-red-500 bg-red-50 px-2.5 py-1 rounded-full font-medium active:scale-95 transition-transform disabled:opacity-50 ml-auto"
+            >
+              {removing ? <Loader2 className="w-3 h-3 animate-spin" /> : <Trash2 className="w-3 h-3" />}
+              Remove
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Desktop: compact hover-based actions
   return (
     <div className="flex items-center gap-3 py-3 border-b border-slate-100 last:border-0 group">
       <div className="w-2 h-2 rounded-full bg-[oklch(0.62_0.17_162)] flex-shrink-0 mt-0.5" />
@@ -228,7 +300,6 @@ function AddressRow({ addr, rates, onRemove, onMeasure, onPitchChange, removing 
           ${price.toLocaleString()}
         </span>
       )}
-      {/* PDF action buttons — visible on hover when measured */}
       {sqft && (
         <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
           <button
@@ -263,6 +334,7 @@ function AddressRow({ addr, rates, onRemove, onMeasure, onPitchChange, removing 
 export default function AppPage() {
   const { isAuthenticated, loading: authLoading } = useAuth();
   const params = useParams<{ campaignId?: string }>();
+  const isMobile = useIsMobile();
 
   const [rates, setRates] = useState<PitchRate[]>(DEFAULT_RATES);
   const [showSettings, setShowSettings] = useState(false);
@@ -276,13 +348,21 @@ export default function AppPage() {
   const [showPreview, setShowPreview] = useState(false);
   const [campaignName, setCampaignName] = useState("New Campaign");
 
+  // Mobile-specific state
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [gpsFollow, setGpsFollow] = useState(false);
+  const [gpsSpeed, setGpsSpeed] = useState<number | null>(null);
+  const [gpsHeading, setGpsHeading] = useState<number | null>(null);
+  const gpsWatchRef = useRef<number | null>(null);
+  const gpsMarkerRef = useRef<google.maps.Marker | null>(null);
+  const gpsCircleRef = useRef<google.maps.Circle | null>(null);
+
   // ── Handle Stripe redirect back (success / cancelled) ──
   useEffect(() => {
     const searchParams = new URLSearchParams(window.location.search);
     const payment = searchParams.get("payment");
     if (payment === "success") {
       toast.success("Payment confirmed! Your Prime Mail batch is queued for printing.");
-      // Clean the URL without a full reload
       window.history.replaceState({}, "", window.location.pathname);
       utils.campaigns.list.invalidate();
       utils.dashboard.stats.invalidate();
@@ -349,7 +429,6 @@ export default function AppPage() {
   const createCheckout = trpc.payments.createCheckout.useMutation();
 
   // ── Solar API measurement helper ──
-  // Calls the real Google Solar API; falls back to the seeded estimate if Solar has no data.
   const solarUtils = trpc.useUtils();
   const measureWithSolar = useCallback(async (
     lat: number,
@@ -361,7 +440,6 @@ export default function AppPage() {
         const pitchMap: Record<string, string> = {
           flat: "flat", "4/12": "4_12", "6/12": "6_12", "8/12": "8_12", "10/12+": "10_12",
         };
-        // Store segment data for map overlay
         if (result.segments && result.segments.length > 0) {
           setRoofSegments(result.segments as RoofSegment[]);
         }
@@ -375,17 +453,16 @@ export default function AppPage() {
     } catch {
       // Solar API unavailable — fall through to estimate
     }
-    // Fallback: seeded estimate with default 6/12 pitch
     return { sqft: estimateSqft(lat, lng), pitch: "6/12", pitchKey: "6_12", fromSolar: false };
   }, [solarUtils]);
 
   // ── Pitch → overlay color ──
   const pitchColor = (deg: number): { fill: string; stroke: string } => {
-    if (deg < 5)  return { fill: "#94a3b8", stroke: "#64748b" };  // flat — slate
-    if (deg < 22) return { fill: "#3b82f6", stroke: "#1d4ed8" };  // 4/12 — blue
-    if (deg < 30) return { fill: "#22c55e", stroke: "#15803d" };  // 6/12 — green
-    if (deg < 38) return { fill: "#f97316", stroke: "#c2410c" };  // 8/12 — orange
-    return { fill: "#ef4444", stroke: "#b91c1c" };                // 10/12+ — red
+    if (deg < 5)  return { fill: "#94a3b8", stroke: "#64748b" };
+    if (deg < 22) return { fill: "#3b82f6", stroke: "#1d4ed8" };
+    if (deg < 30) return { fill: "#22c55e", stroke: "#15803d" };
+    if (deg < 38) return { fill: "#f97316", stroke: "#c2410c" };
+    return { fill: "#ef4444", stroke: "#b91c1c" };
   };
 
   // ── Draw / clear segment overlay ──
@@ -457,13 +534,112 @@ export default function AppPage() {
     }
   }, [showOverlay, roofSegments, drawSegmentOverlay, clearOverlayPolygons]);
 
+  // ── GPS Follow Me ──
+  const startGpsFollow = useCallback(() => {
+    if (!navigator.geolocation) {
+      toast.error("GPS not available on this device");
+      return;
+    }
+    setGpsFollow(true);
+    // Request a one-shot first to center immediately
+    navigator.geolocation.getCurrentPosition(pos => {
+      const { latitude: lat, longitude: lng } = pos.coords;
+      if (mapRef.current) {
+        mapRef.current.panTo({ lat, lng });
+        mapRef.current.setZoom(19);
+      }
+    }, () => {
+      toast.error("Could not get GPS location — check browser permissions");
+      setGpsFollow(false);
+    }, { enableHighAccuracy: true });
+
+    // Then watch continuously
+    const watchId = navigator.geolocation.watchPosition(pos => {
+      const { latitude: lat, longitude: lng, speed, heading } = pos.coords;
+      setGpsSpeed(speed);
+      setGpsHeading(heading);
+
+      // Update or create the blue GPS dot
+      if (mapRef.current) {
+        if (!gpsMarkerRef.current) {
+          gpsMarkerRef.current = new google.maps.Marker({
+            position: { lat, lng },
+            map: mapRef.current,
+            icon: {
+              path: google.maps.SymbolPath.CIRCLE,
+              scale: 10,
+              fillColor: "#2563EB",
+              fillOpacity: 1,
+              strokeColor: "#ffffff",
+              strokeWeight: 3,
+            },
+            zIndex: 999,
+            title: "Your location",
+          });
+        } else {
+          gpsMarkerRef.current.setPosition({ lat, lng });
+        }
+
+        // Accuracy circle
+        if (!gpsCircleRef.current) {
+          gpsCircleRef.current = new google.maps.Circle({
+            center: { lat, lng },
+            radius: pos.coords.accuracy,
+            strokeColor: "#2563EB",
+            strokeOpacity: 0.3,
+            strokeWeight: 1,
+            fillColor: "#2563EB",
+            fillOpacity: 0.08,
+            map: mapRef.current,
+          });
+        } else {
+          gpsCircleRef.current.setCenter({ lat, lng });
+          gpsCircleRef.current.setRadius(pos.coords.accuracy);
+        }
+
+        // Pan to follow
+        mapRef.current.panTo({ lat, lng });
+      }
+    }, err => {
+      console.warn("[GPS]", err);
+    }, { enableHighAccuracy: true, maximumAge: 1000, timeout: 5000 });
+
+    gpsWatchRef.current = watchId;
+  }, []);
+
+  const stopGpsFollow = useCallback(() => {
+    setGpsFollow(false);
+    setGpsSpeed(null);
+    setGpsHeading(null);
+    if (gpsWatchRef.current !== null) {
+      navigator.geolocation.clearWatch(gpsWatchRef.current);
+      gpsWatchRef.current = null;
+    }
+    if (gpsMarkerRef.current) {
+      gpsMarkerRef.current.setMap(null);
+      gpsMarkerRef.current = null;
+    }
+    if (gpsCircleRef.current) {
+      gpsCircleRef.current.setMap(null);
+      gpsCircleRef.current = null;
+    }
+  }, []);
+
+  // Clean up GPS watch on unmount
+  useEffect(() => {
+    return () => {
+      if (gpsWatchRef.current !== null) {
+        navigator.geolocation.clearWatch(gpsWatchRef.current);
+      }
+    };
+  }, []);
+
   // ── Ensure a campaign exists before saving addresses ──
   const ensureCampaign = useCallback(async (): Promise<number> => {
     if (campaignId !== null) return campaignId;
     const name = `Campaign ${new Date().toLocaleDateString("en-US", { month: "short", day: "numeric" })}`;
     setCampaignName(name);
-    const result = await createCampaign.mutateAsync({ name });
-    // Fetch the newly created campaign id
+    await createCampaign.mutateAsync({ name });
     const campaigns = await utils.campaigns.list.fetch();
     const newest = campaigns[campaigns.length - 1];
     if (newest) {
@@ -499,7 +675,6 @@ export default function AppPage() {
             source: "pin_drop",
           });
 
-          // Immediately measure after adding using real Solar API
           const fresh = await utils.addresses.list.fetch({ campaignId: cid });
           const newEntry = fresh.find(a => a.fullAddress === address && !a.measuredSqFt);
           if (newEntry) {
@@ -517,7 +692,6 @@ export default function AppPage() {
             if (!fromSolar) console.warn("[Solar] No data for", address, "— used estimate fallback");
           }
 
-          // Drop marker on map
           const marker = new google.maps.Marker({
             position: { lat, lng },
             map,
@@ -534,12 +708,14 @@ export default function AppPage() {
           if (newEntry) markersRef.current.set(newEntry.id, marker);
 
           toast.success(`Saved: ${address.split(",")[0]}`);
+          // On mobile, briefly open the drawer to confirm the pin was added
+          if (isMobile) setDrawerOpen(true);
         } catch {
           toast.error("Failed to save address — are you signed in?");
         }
       });
     });
-  }, [isAuthenticated, ensureCampaign, addAddress, updateMeasurement, rates, utils]);
+  }, [isAuthenticated, ensureCampaign, addAddress, updateMeasurement, rates, utils, isMobile]);
 
   // ── Address search ──
   const handleSearch = useCallback(async () => {
@@ -591,7 +767,6 @@ export default function AppPage() {
           if (!fromSolar) console.warn("[Solar] No data for", address, "— used estimate fallback");
         }
 
-        // Pan map to address
         if (mapRef.current) {
           mapRef.current.panTo({ lat, lng });
           mapRef.current.setZoom(18);
@@ -639,7 +814,6 @@ export default function AppPage() {
       let processed = 0;
       const processLine = (i: number) => {
         if (i >= Math.min(dataLines.length, 200)) {
-          // Bulk save
           ensureCampaign().then(cid => {
             if (batch.length === 0) { toast.error("No valid addresses found in CSV"); return; }
             addBulk.mutateAsync({ campaignId: cid, addresses: batch }).then(() => {
@@ -648,11 +822,9 @@ export default function AppPage() {
           });
           return;
         }
-        const parts = dataLines[i].split(",");
-        const address = (parts[0] || "").trim().replace(/^"|"$/g, "");
-        if (!address) { processLine(i + 1); return; }
-
-        geocoder.geocode({ address }, (results, status) => {
+        const raw = dataLines[i].split(",")[0].trim();
+        if (!raw) { processLine(i + 1); return; }
+        geocoder.geocode({ address: raw }, (results, status) => {
           if (status === "OK" && results?.[0]) {
             const loc = results[0].geometry.location;
             batch.push({
@@ -661,20 +833,22 @@ export default function AppPage() {
               lng: loc.lng().toString(),
               source: "csv_import",
             });
-            processed++;
           }
-          setTimeout(() => processLine(i + 1), 150);
+          processed++;
+          if (processed % 10 === 0) toast.loading(`Processing ${processed}/${Math.min(dataLines.length, 200)} addresses...`, { id: "csv" });
+          setTimeout(() => processLine(i + 1), 200);
         });
       };
+      toast.loading("Processing CSV...", { id: "csv" });
       processLine(0);
     };
     reader.readAsText(file);
     e.target.value = "";
   }, [isAuthenticated, ensureCampaign, addBulk]);
 
-  // ── Measure single address ──
+  // ── Single measure ──
   const handleMeasure = useCallback(async (addr: DBAddress) => {
-    if (!addr.lat || !addr.lng || !campaignId) return;
+    if (!campaignId || !addr.lat || !addr.lng) return;
     const lat = parseFloat(addr.lat);
     const lng = parseFloat(addr.lng);
     try {
@@ -752,7 +926,6 @@ export default function AppPage() {
     setRemovingId(id);
     try {
       await deleteAddress.mutateAsync({ id, campaignId });
-      // Remove marker from map
       const marker = markersRef.current.get(id);
       if (marker) { marker.setMap(null); markersRef.current.delete(id); }
     } catch {
@@ -761,7 +934,7 @@ export default function AppPage() {
     }
   }, [campaignId, deleteAddress]);
 
-  // ── Order batch — opens Stripe Checkout in a new tab ──
+  // ── Order batch ──
   const handleOrder = useCallback(async () => {
     if (!campaignId) return;
     try {
@@ -775,7 +948,7 @@ export default function AppPage() {
       setShowPreview(false);
       setShowOrderModal(false);
       window.open(checkoutUrl, "_blank");
-    } catch (err) {
+    } catch {
       toast.dismiss("checkout");
       toast.error("Failed to start checkout. Please try again.");
     }
@@ -819,6 +992,304 @@ export default function AppPage() {
     );
   }
 
+  // ─────────────────────────────────────────────────────────────────────────────
+  // MOBILE LAYOUT
+  // ─────────────────────────────────────────────────────────────────────────────
+  if (isMobile) {
+    return (
+      <div className="relative w-full bg-black" style={{ height: "100dvh" }}>
+        {/* Full-screen map */}
+        <MapView
+          onMapReady={handleMapReady}
+          initialCenter={{ lat: 33.749, lng: -84.388 }}
+          initialZoom={17}
+          className="absolute inset-0 w-full h-full"
+        />
+
+        {/* ── Floating top bar ── */}
+        <div className="absolute top-0 left-0 right-0 z-20 pointer-events-none">
+          <div className="flex items-center justify-between px-3 pt-3 pb-2 pointer-events-auto">
+            {/* Left: back + brand */}
+            <div className="flex items-center gap-2">
+              <Link href="/dashboard">
+                <button className="w-10 h-10 rounded-xl bg-white/90 backdrop-blur-sm shadow-lg flex items-center justify-center active:scale-95 transition-transform">
+                  <ArrowLeft className="w-5 h-5 text-slate-700" />
+                </button>
+              </Link>
+              <div className="bg-white/90 backdrop-blur-sm rounded-xl shadow-lg px-3 py-2 flex items-center gap-2">
+                <div className="w-6 h-6 rounded-md bg-[oklch(0.62_0.17_162)] flex items-center justify-center">
+                  <Mail className="w-3.5 h-3.5 text-white" />
+                </div>
+                <span className="font-bold text-[oklch(0.13_0.03_162)] text-sm">PrimeMail</span>
+                {campaignId && (
+                  <span className="text-xs text-slate-400">#{campaignId}</span>
+                )}
+              </div>
+            </div>
+
+            {/* Right: speed badge + settings */}
+            <div className="flex items-center gap-2">
+              {gpsFollow && (
+                <div className="bg-[oklch(0.62_0.17_162)] text-white rounded-xl px-3 py-2 shadow-lg flex items-center gap-2">
+                  {gpsSpeed !== null && gpsSpeed > 0.5 && (
+                    <span className="font-mono font-bold text-sm">{speedLabel(gpsSpeed)}</span>
+                  )}
+                  {gpsHeading !== null ? (
+                    <span
+                      className="text-base leading-none font-bold"
+                      style={{ display: "inline-block", transform: `rotate(${gpsHeading}deg)` }}
+                      title={`Heading ${Math.round(gpsHeading)}\u00b0`}
+                    >
+                      &#8593;
+                    </span>
+                  ) : (
+                    <span className="text-xs font-medium opacity-80">GPS</span>
+                  )}
+                </div>
+              )}
+              <button
+                onClick={() => setShowSettings(true)}
+                className="w-10 h-10 rounded-xl bg-white/90 backdrop-blur-sm shadow-lg flex items-center justify-center active:scale-95 transition-transform"
+              >
+                <Settings2 className="w-5 h-5 text-slate-600" />
+              </button>
+            </div>
+          </div>
+
+          {/* Search bar (always visible on mobile) */}
+          <div className="px-3 pb-2 pointer-events-auto">
+            <div className="flex gap-2">
+              <div className="flex-1 bg-white/90 backdrop-blur-sm rounded-xl shadow-lg flex items-center gap-2 px-3">
+                <Search className="w-4 h-4 text-slate-400 flex-shrink-0" />
+                <input
+                  value={searchInput}
+                  onChange={e => setSearchInput(e.target.value)}
+                  onKeyDown={e => e.key === "Enter" && handleSearch()}
+                  placeholder="Search address..."
+                  className="flex-1 bg-transparent text-sm text-slate-800 placeholder:text-slate-400 py-3 outline-none"
+                />
+                {searchInput && (
+                  <button onClick={() => setSearchInput("")} className="p-1">
+                    <X className="w-3.5 h-3.5 text-slate-400" />
+                  </button>
+                )}
+              </div>
+              <button
+                onClick={handleSearch}
+                disabled={addAddress.isPending || !searchInput.trim()}
+                className="w-12 h-12 rounded-xl bg-[oklch(0.62_0.17_162)] shadow-lg flex items-center justify-center active:scale-95 transition-transform disabled:opacity-50"
+              >
+                {addAddress.isPending ? <Loader2 className="w-5 h-5 text-white animate-spin" /> : <Plus className="w-5 h-5 text-white" />}
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* ── Tap-to-pin hint (shown when no addresses yet) ── */}
+        {totalAddresses === 0 && (
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-10 pointer-events-none">
+            <div className="bg-black/60 backdrop-blur-sm text-white rounded-2xl px-5 py-3 text-center shadow-xl">
+              <MapPin className="w-6 h-6 mx-auto mb-1 text-[oklch(0.62_0.17_162)]" />
+              <p className="text-sm font-semibold">Tap any house to pin it</p>
+              <p className="text-xs text-white/70 mt-0.5">Roof measured automatically</p>
+            </div>
+          </div>
+        )}
+
+        {/* ── Right-side floating controls ── */}
+        <div className="absolute right-3 z-20 flex flex-col gap-3" style={{ bottom: "120px" }}>
+          {/* Overlay toggle */}
+          {roofSegments.length > 0 && (
+            <button
+              onClick={() => setShowOverlay(v => !v)}
+              className={`w-12 h-12 rounded-xl shadow-lg flex items-center justify-center active:scale-95 transition-all ${
+                showOverlay ? "bg-[oklch(0.62_0.17_162)] text-white" : "bg-white/90 backdrop-blur-sm text-slate-600"
+              }`}
+            >
+              <Layers className="w-5 h-5" />
+            </button>
+          )}
+
+          {/* GPS Follow Me button */}
+          <button
+            onClick={() => gpsFollow ? stopGpsFollow() : startGpsFollow()}
+            className={`w-14 h-14 rounded-2xl shadow-xl flex flex-col items-center justify-center gap-0.5 active:scale-95 transition-all ${
+              gpsFollow
+                ? "bg-blue-600 text-white shadow-blue-500/40 shadow-xl"
+                : "bg-white/90 backdrop-blur-sm text-slate-700"
+            }`}
+          >
+            {gpsFollow ? (
+              <Navigation className="w-6 h-6" />
+            ) : (
+              <Crosshair className="w-6 h-6" />
+            )}
+            <span className="text-[9px] font-semibold leading-none">
+              {gpsFollow ? "ON" : "GPS"}
+            </span>
+          </button>
+        </div>
+
+        {/* ── Bottom drawer handle / pull-up ── */}
+        <Drawer open={drawerOpen} onOpenChange={setDrawerOpen}>
+          {/* Persistent handle bar (always visible, not part of drawer) */}
+          <div
+            className="absolute bottom-0 left-0 right-0 z-20 pointer-events-auto"
+            onClick={() => setDrawerOpen(true)}
+          >
+            <div className="bg-white rounded-t-2xl shadow-2xl px-5 pt-3 pb-6">
+              {/* Drag handle */}
+              <div className="w-10 h-1 bg-slate-200 rounded-full mx-auto mb-3" />
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-1.5">
+                    <div className="w-2 h-2 rounded-full bg-[oklch(0.62_0.17_162)]" />
+                    <span className="font-semibold text-sm text-[oklch(0.13_0.03_162)]">
+                      {totalAddresses} {totalAddresses === 1 ? "address" : "addresses"}
+                    </span>
+                  </div>
+                  {measuredCount > 0 && (
+                    <span className="text-xs text-slate-400">{measuredCount} measured</span>
+                  )}
+                </div>
+                <div className="flex items-center gap-2">
+                  {totalEstimate > 0 && (
+                    <span className="font-mono font-bold text-sm text-[oklch(0.62_0.17_162)]">
+                      ${totalEstimate.toLocaleString()}
+                    </span>
+                  )}
+                  <div className="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center">
+                    <ChevronUp className="w-4 h-4 text-slate-500" />
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <DrawerContent className="max-h-[85dvh]">
+            <DrawerHeader className="pb-2">
+              <DrawerTitle className="flex items-center justify-between">
+                <span className="font-display font-bold text-[oklch(0.13_0.03_162)]">Target List</span>
+                <div className="flex items-center gap-2">
+                  {dbAddresses.length > 0 && (
+                    <button
+                      onClick={handleMeasureAll}
+                      disabled={updateMeasurement.isPending}
+                      className="text-xs text-[oklch(0.62_0.17_162)] font-medium flex items-center gap-1 bg-[oklch(0.95_0.04_162)] px-3 py-1.5 rounded-full disabled:opacity-50"
+                    >
+                      <Ruler className="w-3 h-3" /> Measure All
+                    </button>
+                  )}
+                </div>
+              </DrawerTitle>
+            </DrawerHeader>
+
+            {/* Stats row */}
+            <div className="grid grid-cols-3 gap-2 px-4 mb-3">
+              <div className="bg-slate-50 rounded-xl p-2.5 text-center">
+                <p className="font-mono font-bold text-lg text-[oklch(0.13_0.03_162)]">{totalAddresses}</p>
+                <p className="text-xs text-slate-400">Addresses</p>
+              </div>
+              <div className="bg-slate-50 rounded-xl p-2.5 text-center">
+                <p className="font-mono font-bold text-lg text-[oklch(0.13_0.03_162)]">{measuredCount}</p>
+                <p className="text-xs text-slate-400">Measured</p>
+              </div>
+              <div className="bg-[oklch(0.95_0.04_162)] rounded-xl p-2.5 text-center">
+                <p className="font-mono font-bold text-lg text-[oklch(0.62_0.17_162)]">${totalEstimate.toLocaleString()}</p>
+                <p className="text-xs text-[oklch(0.62_0.17_162)]/70">Revenue</p>
+              </div>
+            </div>
+
+            {/* Address list */}
+            <div className="flex-1 overflow-y-auto px-4 pb-4">
+              {addressesLoading ? (
+                <div className="flex items-center justify-center h-24">
+                  <Loader2 className="w-6 h-6 animate-spin text-slate-300" />
+                </div>
+              ) : dbAddresses.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-10 text-center">
+                  <MapPin className="w-10 h-10 text-slate-200 mb-3" />
+                  <p className="font-semibold text-slate-400 text-sm">No addresses yet</p>
+                  <p className="text-xs text-slate-300 mt-1">Tap the map to pin houses</p>
+                </div>
+              ) : (
+                dbAddresses.map(addr => (
+                  <AddressRow
+                    key={addr.id}
+                    addr={addr}
+                    rates={rates}
+                    onRemove={handleRemove}
+                    onMeasure={handleMeasure}
+                    onPitchChange={handlePitchChange}
+                    removing={removingId === addr.id}
+                    isMobile
+                  />
+                ))
+              )}
+            </div>
+
+            {/* Order footer */}
+            {dbAddresses.length > 0 && (
+              <div className="border-t border-slate-100 p-4 bg-white">
+                <div className="flex items-center justify-between mb-3">
+                  <span className="text-sm text-slate-500">Prime Mail ({totalAddresses} pieces)</span>
+                  <span className="font-mono font-bold text-sm text-[oklch(0.13_0.03_162)]">${totalQMail.toFixed(2)}</span>
+                </div>
+                <Button
+                  onClick={() => setShowPreview(true)}
+                  className="w-full bg-[oklch(0.62_0.17_162)] hover:bg-[oklch(0.45_0.15_162)] text-white font-semibold h-12 text-base"
+                  disabled={measuredCount === 0}
+                >
+                  <Mail className="w-5 h-5 mr-2" />
+                  Order Prime Mail Batch
+                  <ChevronRight className="w-5 h-5 ml-1" />
+                </Button>
+                {measuredCount < totalAddresses && (
+                  <p className="text-xs text-amber-600 text-center mt-2 flex items-center justify-center gap-1">
+                    <AlertCircle className="w-3 h-3" />
+                    {totalAddresses - measuredCount} address(es) not yet measured
+                  </p>
+                )}
+              </div>
+            )}
+          </DrawerContent>
+        </Drawer>
+
+        {/* Modals */}
+        {showPreview && (
+          <QMailPreview
+            onClose={() => setShowPreview(false)}
+            onConfirm={handleOrder}
+            confirming={createCheckout.isPending}
+            totalAddresses={totalAddresses}
+            totalQMailCost={totalQMail}
+            totalEstimateValue={totalEstimate}
+            companyName={profileData?.companyName ?? undefined}
+            phone={profileData?.phone ?? undefined}
+            website={profileData?.website ?? undefined}
+            licenseNumber={profileData?.licenseNumber ?? undefined}
+            logoUrl={profileData?.logoUrl ?? undefined}
+            tagline={profileData?.tagline ?? undefined}
+            sampleAddress={dbAddresses.find(a => a.measuredSqFt) ? {
+              fullAddress: dbAddresses.find(a => a.measuredSqFt)!.fullAddress,
+              measuredSqFt: parseFloat(dbAddresses.find(a => a.measuredSqFt)!.measuredSqFt!),
+              pitch: dbAddresses.find(a => a.measuredSqFt)!.pitch ?? "6/12",
+              estimatePrice: parseFloat(dbAddresses.find(a => a.measuredSqFt)!.estimatePrice ?? "0"),
+              lat: dbAddresses.find(a => a.measuredSqFt)!.lat ?? undefined,
+              lng: dbAddresses.find(a => a.measuredSqFt)!.lng ?? undefined,
+            } : undefined}
+          />
+        )}
+        {showSettings && (
+          <PricingSettings rates={rates} setRates={setRates} onClose={() => setShowSettings(false)} />
+        )}
+      </div>
+    );
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // DESKTOP LAYOUT (unchanged)
+  // ─────────────────────────────────────────────────────────────────────────────
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col">
       {/* Header */}
@@ -928,7 +1399,6 @@ export default function AppPage() {
                         ? "bg-[oklch(0.62_0.17_162)] border-[oklch(0.62_0.17_162)] text-white"
                         : "bg-white border-slate-200 text-slate-500 hover:border-[oklch(0.62_0.17_162)] hover:text-[oklch(0.62_0.17_162)]"
                     }`}
-                    title={showOverlay ? "Hide roof segment overlay" : "Show roof segment overlay"}
                   >
                     <Layers className="w-3 h-3" />
                     {showOverlay ? "Hide Overlay" : "Show Overlay"}
@@ -1105,7 +1575,7 @@ export default function AppPage() {
         <PricingSettings rates={rates} setRates={setRates} onClose={() => setShowSettings(false)} />
       )}
 
-      {/* Order confirmation modal — kept as fallback but replaced by QMailPreview */}
+      {/* Order confirmation modal */}
       {showOrderModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 p-8">
@@ -1114,7 +1584,6 @@ export default function AppPage() {
             </div>
             <h3 className="font-display font-bold text-xl text-[oklch(0.13_0.03_162)] mb-2">Confirm Prime Mail Batch</h3>
             <p className="text-slate-500 text-sm mb-6">Review your order before we send it to print.</p>
-
             <div className="space-y-3 mb-6">
               <div className="flex justify-between text-sm">
                 <span className="text-slate-500">Addresses</span>
@@ -1133,13 +1602,11 @@ export default function AppPage() {
                 <span className="font-mono font-bold text-[oklch(0.13_0.03_162)]">${totalQMail.toFixed(2)}</span>
               </div>
             </div>
-
             <div className="bg-[oklch(0.95_0.04_162)] rounded-xl p-4 mb-6">
               <p className="text-xs text-[oklch(0.45_0.15_162)]">
-                <strong>Turnaround:</strong> Packets are printed and dropped at USPS within 48 hours. Homeowners receive mail in 3–7 business days.
+                <strong>Turnaround:</strong> Packets are printed and dropped at USPS within 48 hours.
               </p>
             </div>
-
             <div className="flex gap-3">
               <Button variant="outline" onClick={() => setShowOrderModal(false)} className="flex-1">Cancel</Button>
               <Button
