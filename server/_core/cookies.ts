@@ -24,25 +24,20 @@ function isSecureRequest(req: Request) {
 export function getSessionCookieOptions(
   req: Request
 ): Pick<CookieOptions, "domain" | "httpOnly" | "path" | "sameSite" | "secure"> {
-  // const hostname = req.hostname;
-  // const shouldSetDomain =
-  //   hostname &&
-  //   !LOCAL_HOSTS.has(hostname) &&
-  //   !isIpAddress(hostname) &&
-  //   hostname !== "127.0.0.1" &&
-  //   hostname !== "::1";
+  const hostname = req.hostname ?? "";
+  const isLocalhost = LOCAL_HOSTS.has(hostname) || isIpAddress(hostname);
 
-  // const domain =
-  //   shouldSetDomain && !hostname.startsWith(".")
-  //     ? `.${hostname}`
-  //     : shouldSetDomain
-  //       ? hostname
-  //       : undefined;
+  // On localhost we can use lax/non-secure cookies for dev convenience.
+  // On any deployed domain (always HTTPS) we must set secure:true so that
+  // SameSite:none is honoured — Safari silently drops cookies where
+  // SameSite=none but secure is false.
+  const secure = isLocalhost ? isSecureRequest(req) : true;
+  const sameSite = isLocalhost ? ("lax" as const) : ("none" as const);
 
   return {
     httpOnly: true,
     path: "/",
-    sameSite: "none",
-    secure: isSecureRequest(req),
+    sameSite,
+    secure,
   };
 }

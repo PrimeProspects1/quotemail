@@ -19,6 +19,23 @@ export function registerOAuthRoutes(app: Express) {
       return;
     }
 
+    // Parse destination from state (supports both old base64(redirectUri) and new JSON format)
+    let destination = "/app";
+    try {
+      const decoded = Buffer.from(state, "base64").toString("utf8");
+      try {
+        const parsed = JSON.parse(decoded) as { redirectUri?: string; destination?: string };
+        if (parsed.destination && parsed.destination.startsWith("/")) {
+          destination = parsed.destination;
+        }
+      } catch {
+        // Old format: state was just the redirectUri string — send to /app
+        destination = "/app";
+      }
+    } catch {
+      destination = "/app";
+    }
+
     try {
       const tokenResponse = await sdk.exchangeCodeForToken(code, state);
       const userInfo = await sdk.getUserInfo(tokenResponse.accessToken);
@@ -44,7 +61,8 @@ export function registerOAuthRoutes(app: Express) {
       const cookieOptions = getSessionCookieOptions(req);
       res.cookie(COOKIE_NAME, sessionToken, { ...cookieOptions, maxAge: ONE_YEAR_MS });
 
-      res.redirect(302, "/");
+      // Redirect to where the user was trying to go (or /app as default)
+      res.redirect(302, destination);
     } catch (error) {
       console.error("[OAuth] Callback failed", error);
       res.status(500).json({ error: "OAuth callback failed" });
