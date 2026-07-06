@@ -13,6 +13,7 @@ import {
   createMailerTemplate, updateMailerTemplate, deleteMailerTemplate, setDefaultMailerTemplate,
 } from "./db";
 import { makeRequest } from "./_core/map";
+import { ENV } from "./_core/env";
 import { z } from "zod";
 
 const authRouter = router({
@@ -362,40 +363,63 @@ const solarRouter = router({
     .input(z.object({ lat: z.number(), lng: z.number() }))
     .query(async ({ input }) => {
       try {
-        const data = await makeRequest<SolarBuildingInsights>(
-          "/maps/api/solar/v1/buildingInsights:findClosest",
-          { "location.latitude": input.lat, "location.longitude": input.lng, requiredQuality: "LOW" }
-        );
-        // Sum all roof segment areas (m²) → convert to roofing squares (1 sq = 9.2903 m²)
+        const apiKey = ENV.googleSolarApiKey;
+        if (!apiKey) throw new Error("GOOGLE_SOLAR_API_KEY not configured");
+
+        // Call Google Solar API directly (not via Manus proxy — Solar API is a separate product)
+        // Correct base URL: https://solar.googleapis.com/v1/buildingInsights:findClosest
+        const url = new URL("https://solar.googleapis.com/v1/buildingInsights:findClosest");
+        url.searchParams.set("key", apiKey);
+        url.searchParams.set("location.latitude", input.lat.toString());
+        url.searchParams.set("location.longitude", input.lng.toString());
+        url.searchParams.set("requiredQuality", "LOW");
+
+        const res = await fetch(url.toString());
+        if (!res.ok) {
+          const errText = await res.text();
+          throw new Error(`Solar API error ${res.status}: ${errText}`);
+        }
+        const data = await res.json() as SolarBuildingInsights;
+
+        // Sum all roof segment areas (m²) → convert to roofing squares (1 sq = 100 sq ft)
+        // wholeRoofStats gives total roof area including pitch factor (actual surface area)
         const totalAreaM2 = (data.solarPotential?.wholeRoofStats?.areaMeters2) ??
           (data.roofSegmentStats ?? []).reduce((sum, seg) => sum + (seg.stats?.areaMeters2 ?? 0), 0);
-        const roofSquares = totalAreaM2 / 9.2903;
-        const measuredSqFt = totalAreaM2 * 10.7639;
-        // Determine dominant pitch from largest segment
+        const measuredSqFt = Math.round(totalAreaM2 * 10.7639);
+        const roofSquares = parseFloat((measuredSqFt / 100).toFixed(2));
+
+        // Determine dominant pitch from the largest PITCHED segment (skip flat/near-flat < 5°
+        // which are often garages, porches, or flat dormers, not the main roof)
         const segments = data.solarPotential?.roofSegmentStats ?? data.roofSegmentStats ?? [];
-        const dominantSegment = segments.reduce(
+        const pitchedSegments = segments.filter(seg => (seg.pitchDegrees ?? 0) >= 5);
+        const candidateSegments = pitchedSegments.length > 0 ? pitchedSegments : segments;
+        const dominantSegment = candidateSegments.reduce(
           (max, seg) => (seg.stats?.areaMeters2 ?? 0) > (max.stats?.areaMeters2 ?? 0) ? seg : max,
-          segments[0] ?? { pitchDegrees: 0, stats: { areaMeters2: 0 } }
+          candidateSegments[0] ?? { pitchDegrees: 0, stats: { areaMeters2: 0 } }
         );
         const pitchDeg = dominantSegment?.pitchDegrees ?? 0;
-        // Convert pitch degrees to standard roofing pitch notation
+
+        // Convert pitch degrees → standard roofing pitch notation
+        // 4/12 ≈ 18.4°, 6/12 ≈ 26.6°, 8/12 ≈ 33.7°, 10/12 ≈ 39.8°
         let pitch: "flat" | "4/12" | "6/12" | "8/12" | "10/12+";
         if (pitchDeg < 5) pitch = "flat";
         else if (pitchDeg < 22) pitch = "4/12";
         else if (pitchDeg < 30) pitch = "6/12";
         else if (pitchDeg < 38) pitch = "8/12";
         else pitch = "10/12+";
+
         return {
           success: true,
-          roofSquares: parseFloat(roofSquares.toFixed(2)),
-          measuredSqFt: parseFloat(measuredSqFt.toFixed(0)),
+          roofSquares,
+          measuredSqFt,
           pitch,
-          pitchDegrees: pitchDeg,
+          pitchDegrees: parseFloat(pitchDeg.toFixed(1)),
           totalAreaM2: parseFloat(totalAreaM2.toFixed(2)),
           segmentCount: segments.length,
         };
       } catch (err) {
         // Solar API may not have data for all addresses — return graceful fallback
+        console.error("[Solar API]", err);
         return { success: false, error: String(err), roofSquares: null, measuredSqFt: null, pitch: null };
       }
     }),
