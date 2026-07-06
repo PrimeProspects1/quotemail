@@ -87,3 +87,11 @@
 - [x] Measure button (single): uses real Solar sq ft + pitch, shows "Google Solar" in toast
 - [x] Measure All: uses real Solar for each address, reports Solar vs estimated count in toast
 - [x] TypeScript compiles cleanly with no errors
+
+## Roof Segment Map Overlay (Jul 6)
+- [x] Extend Solar API tRPC procedure to return full segment polygon data (boundingBox + center + pitchDegrees + areaMeters2)
+- [x] Build RoofSegmentOverlay component: draws colored polygons on satellite map per segment
+- [x] Color-code segments by pitch (flat=gray, 4/12=blue, 6/12=green, 8/12=orange, 10/12+=red)
+- [x] Show pitch label and sq ft on hover/click per segment
+- [x] Wire overlay to appear after a successful Solar measurement on any address pin
+- [x] Add toggle button to show/hide the overlay

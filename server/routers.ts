@@ -408,6 +408,24 @@ const solarRouter = router({
         else if (pitchDeg < 38) pitch = "8/12";
         else pitch = "10/12+";
 
+        // Return full segment geometry for map overlay
+        // Top-level roofSegmentStats has boundingBox + center geometry
+        // solarPotential.roofSegmentStats has pitch/area but no geometry
+        // We use the top-level array which has both
+        const topLevelSegments = data.roofSegmentStats ?? [];
+        const segmentPolygons = topLevelSegments.map((seg, i) => ({
+          id: i,
+          pitchDegrees: parseFloat((seg.pitchDegrees ?? 0).toFixed(1)),
+          azimuthDegrees: parseFloat((seg.azimuthDegrees ?? 0).toFixed(1)),
+          areaMeters2: parseFloat((seg.stats?.areaMeters2 ?? 0).toFixed(1)),
+          sqft: Math.round((seg.stats?.areaMeters2 ?? 0) * 10.7639),
+          center: { lat: seg.center?.latitude ?? 0, lng: seg.center?.longitude ?? 0 },
+          boundingBox: {
+            sw: { lat: seg.boundingBox?.sw?.latitude ?? 0, lng: seg.boundingBox?.sw?.longitude ?? 0 },
+            ne: { lat: seg.boundingBox?.ne?.latitude ?? 0, lng: seg.boundingBox?.ne?.longitude ?? 0 },
+          },
+        }));
+
         return {
           success: true,
           roofSquares,
@@ -416,6 +434,11 @@ const solarRouter = router({
           pitchDegrees: parseFloat(pitchDeg.toFixed(1)),
           totalAreaM2: parseFloat(totalAreaM2.toFixed(2)),
           segmentCount: segments.length,
+          segments: segmentPolygons,
+          buildingCenter: {
+            lat: data.center?.latitude ?? input.lat,
+            lng: data.center?.longitude ?? input.lng,
+          },
         };
       } catch (err) {
         // Solar API may not have data for all addresses — return graceful fallback

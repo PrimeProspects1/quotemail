@@ -14,7 +14,7 @@ import {
   MapPin, Upload, Search, Plus, Trash2, Settings2, Mail,
   ChevronRight, X, Check, AlertCircle, BarChart3, Package,
   FileSpreadsheet, Ruler, DollarSign, ArrowLeft, Loader2,
-  RefreshCw, FileDown, Eye,
+  RefreshCw, FileDown, Eye, Layers,
 } from "lucide-react";
 import { MapView } from "@/components/Map";
 import { QMailPreview } from "@/components/QMailPreview";
@@ -23,6 +23,19 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import { getLoginUrl } from "@/const";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
+interface RoofSegment {
+  id: number;
+  pitchDegrees: number;
+  azimuthDegrees: number;
+  areaMeters2: number;
+  sqft: number;
+  center: { lat: number; lng: number };
+  boundingBox: {
+    sw: { lat: number; lng: number };
+    ne: { lat: number; lng: number };
+  };
+}
+
 interface PitchRate {
   label: string;
   key: string;
@@ -284,6 +297,11 @@ export default function AppPage() {
   const geocoderRef = useRef<google.maps.Geocoder | null>(null);
   const markersRef = useRef<Map<number, google.maps.Marker>>(new Map());
   const fileInputRef = useRef<HTMLInputElement>(null);
+  // Roof segment overlay
+  const overlayPolygonsRef = useRef<google.maps.Rectangle[]>([]);
+  const overlayInfoWindowRef = useRef<google.maps.InfoWindow | null>(null);
+  const [roofSegments, setRoofSegments] = useState<RoofSegment[]>([]);
+  const [showOverlay, setShowOverlay] = useState(true);
 
   const utils = trpc.useUtils();
 
@@ -343,6 +361,10 @@ export default function AppPage() {
         const pitchMap: Record<string, string> = {
           flat: "flat", "4/12": "4_12", "6/12": "6_12", "8/12": "8_12", "10/12+": "10_12",
         };
+        // Store segment data for map overlay
+        if (result.segments && result.segments.length > 0) {
+          setRoofSegments(result.segments as RoofSegment[]);
+        }
         return {
           sqft: result.measuredSqFt,
           pitch: result.pitch as "flat" | "4/12" | "6/12" | "8/12" | "10/12+",
@@ -356,6 +378,84 @@ export default function AppPage() {
     // Fallback: seeded estimate with default 6/12 pitch
     return { sqft: estimateSqft(lat, lng), pitch: "6/12", pitchKey: "6_12", fromSolar: false };
   }, [solarUtils]);
+
+  // ── Pitch → overlay color ──
+  const pitchColor = (deg: number): { fill: string; stroke: string } => {
+    if (deg < 5)  return { fill: "#94a3b8", stroke: "#64748b" };  // flat — slate
+    if (deg < 22) return { fill: "#3b82f6", stroke: "#1d4ed8" };  // 4/12 — blue
+    if (deg < 30) return { fill: "#22c55e", stroke: "#15803d" };  // 6/12 — green
+    if (deg < 38) return { fill: "#f97316", stroke: "#c2410c" };  // 8/12 — orange
+    return { fill: "#ef4444", stroke: "#b91c1c" };                // 10/12+ — red
+  };
+
+  // ── Draw / clear segment overlay ──
+  const clearOverlayPolygons = useCallback(() => {
+    overlayPolygonsRef.current.forEach(r => r.setMap(null));
+    overlayPolygonsRef.current = [];
+    overlayInfoWindowRef.current?.close();
+  }, []);
+
+  const drawSegmentOverlay = useCallback((segments: RoofSegment[], map: google.maps.Map) => {
+    clearOverlayPolygons();
+    if (!segments.length) return;
+    const infoWindow = new google.maps.InfoWindow();
+    overlayInfoWindowRef.current = infoWindow;
+
+    segments.forEach(seg => {
+      const { fill, stroke } = pitchColor(seg.pitchDegrees);
+      const rect = new google.maps.Rectangle({
+        bounds: {
+          south: seg.boundingBox.sw.lat,
+          west:  seg.boundingBox.sw.lng,
+          north: seg.boundingBox.ne.lat,
+          east:  seg.boundingBox.ne.lng,
+        },
+        strokeColor: stroke,
+        strokeOpacity: 0.9,
+        strokeWeight: 2,
+        fillColor: fill,
+        fillOpacity: 0.35,
+        map,
+        clickable: true,
+      });
+
+      const pitchLabel =
+        seg.pitchDegrees < 5  ? "Flat" :
+        seg.pitchDegrees < 22 ? "4/12" :
+        seg.pitchDegrees < 30 ? "6/12" :
+        seg.pitchDegrees < 38 ? "8/12" : "10/12+";
+
+      const azDir = (az: number) => {
+        const dirs = ["N","NE","E","SE","S","SW","W","NW"];
+        return dirs[Math.round(az / 45) % 8];
+      };
+
+      rect.addListener("click", () => {
+        infoWindow.setContent(
+          `<div style="font-family:sans-serif;font-size:13px;line-height:1.6;padding:2px 4px">
+            <strong style="font-size:14px">${pitchLabel} Pitch</strong><br/>
+            <span style="color:#555">${seg.pitchDegrees}° slope</span><br/>
+            <span style="color:#555">${seg.sqft.toLocaleString()} sq ft (${seg.areaMeters2} m²)</span><br/>
+            <span style="color:#555">Facing: ${azDir(seg.azimuthDegrees)} (${seg.azimuthDegrees}°)</span>
+          </div>`
+        );
+        infoWindow.setPosition({ lat: seg.center.lat, lng: seg.center.lng });
+        infoWindow.open(map);
+      });
+
+      overlayPolygonsRef.current.push(rect);
+    });
+  }, [clearOverlayPolygons]);
+
+  // ── Redraw overlay when segments or toggle changes ──
+  useEffect(() => {
+    if (!mapRef.current) return;
+    if (showOverlay && roofSegments.length > 0) {
+      drawSegmentOverlay(roofSegments, mapRef.current);
+    } else {
+      clearOverlayPolygons();
+    }
+  }, [showOverlay, roofSegments, drawSegmentOverlay, clearOverlayPolygons]);
 
   // ── Ensure a campaign exists before saving addresses ──
   const ensureCampaign = useCallback(async (): Promise<number> => {
@@ -818,7 +918,23 @@ export default function AppPage() {
             )}
 
             {activeTab === "map" && (
-              <p className="text-xs text-slate-400 ml-2">Click anywhere on the satellite map to pin a house — it saves automatically</p>
+              <div className="flex items-center gap-3 ml-2">
+                <p className="text-xs text-slate-400">Click anywhere on the satellite map to pin a house — it saves automatically</p>
+                {roofSegments.length > 0 && (
+                  <button
+                    onClick={() => setShowOverlay(v => !v)}
+                    className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium border transition-all duration-150 ${
+                      showOverlay
+                        ? "bg-[oklch(0.62_0.17_162)] border-[oklch(0.62_0.17_162)] text-white"
+                        : "bg-white border-slate-200 text-slate-500 hover:border-[oklch(0.62_0.17_162)] hover:text-[oklch(0.62_0.17_162)]"
+                    }`}
+                    title={showOverlay ? "Hide roof segment overlay" : "Show roof segment overlay"}
+                  >
+                    <Layers className="w-3 h-3" />
+                    {showOverlay ? "Hide Overlay" : "Show Overlay"}
+                  </button>
+                )}
+              </div>
             )}
           </div>
 
@@ -832,6 +948,26 @@ export default function AppPage() {
             />
             {activeTab !== "map" && (
               <div className="absolute inset-0 bg-slate-900/5 pointer-events-none" />
+            )}
+            {/* Roof segment color legend */}
+            {showOverlay && roofSegments.length > 0 && (
+              <div className="absolute bottom-6 left-3 bg-white/90 backdrop-blur-sm rounded-xl shadow-lg border border-slate-100 px-3 py-2.5 pointer-events-none">
+                <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1.5">Roof Pitch</p>
+                {([
+                  { label: "Flat",   color: "#94a3b8", range: "< 5°" },
+                  { label: "4/12",   color: "#3b82f6", range: "5–22°" },
+                  { label: "6/12",   color: "#22c55e", range: "22–30°" },
+                  { label: "8/12",   color: "#f97316", range: "30–38°" },
+                  { label: "10/12+", color: "#ef4444", range: "> 38°" },
+                ] as const).map(item => (
+                  <div key={item.label} className="flex items-center gap-2 mb-1 last:mb-0">
+                    <div className="w-3 h-3 rounded-sm flex-shrink-0" style={{ backgroundColor: item.color, opacity: 0.7, border: `1.5px solid ${item.color}` }} />
+                    <span className="text-[11px] font-medium text-slate-700">{item.label}</span>
+                    <span className="text-[10px] text-slate-400">{item.range}</span>
+                  </div>
+                ))}
+                <p className="text-[9px] text-slate-400 mt-1.5 border-t border-slate-100 pt-1.5">Click a segment for details</p>
+              </div>
             )}
           </div>
         </div>
