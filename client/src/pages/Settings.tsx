@@ -9,7 +9,7 @@ import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
 import { useState, useEffect, useRef } from "react";
 import { Link } from "wouter";
-import { ArrowLeft, Building2, DollarSign, Save, Loader2, Mail, Upload, ImageIcon, X } from "lucide-react";
+import { ArrowLeft, Building2, DollarSign, Save, Loader2, Mail, Upload, ImageIcon, X, LayoutTemplate } from "lucide-react";
 
 export default function Settings() {
   const { user, loading, isAuthenticated } = useAuth();
@@ -116,6 +116,11 @@ export default function Settings() {
           <Link href="/dashboard">
             <Button variant="ghost" size="sm" className="gap-2 text-slate-600">
               <ArrowLeft className="w-4 h-4" /> Dashboard
+            </Button>
+          </Link>
+          <Link href="/templates">
+            <Button variant="ghost" size="sm" className="gap-2 text-slate-600">
+              <LayoutTemplate className="w-4 h-4" /> Templates
             </Button>
           </Link>
           <Separator orientation="vertical" className="h-5" />

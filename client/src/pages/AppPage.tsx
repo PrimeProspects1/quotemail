@@ -388,6 +388,9 @@ export default function AppPage() {
   // ── Load contractor profile for preview ──
   const { data: profileData } = trpc.profile.get.useQuery(undefined, { enabled: isAuthenticated });
 
+  // ── Load default mailer template for preview & PDF ──
+  const { data: defaultTemplate } = trpc.templates.getDefault.useQuery(undefined, { enabled: isAuthenticated });
+
   // ── Queries ──
   const { data: dbAddresses = [], isLoading: addressesLoading, refetch: refetchAddresses } =
     trpc.addresses.list.useQuery(
@@ -1264,12 +1267,29 @@ export default function AppPage() {
             totalAddresses={totalAddresses}
             totalQMailCost={totalQMail}
             totalEstimateValue={totalEstimate}
-            companyName={profileData?.companyName ?? undefined}
-            phone={profileData?.phone ?? undefined}
-            website={profileData?.website ?? undefined}
-            licenseNumber={profileData?.licenseNumber ?? undefined}
-            logoUrl={profileData?.logoUrl ?? undefined}
-            tagline={profileData?.tagline ?? undefined}
+            companyName={(defaultTemplate?.companyName ?? profileData?.companyName) ?? undefined}
+            phone={(defaultTemplate?.phone ?? profileData?.phone) ?? undefined}
+            website={(defaultTemplate?.website ?? profileData?.website) ?? undefined}
+            licenseNumber={(defaultTemplate?.licenseNumber ?? profileData?.licenseNumber) ?? undefined}
+            logoUrl={(defaultTemplate?.logoUrl ?? profileData?.logoUrl) ?? undefined}
+            tagline={(defaultTemplate?.tagline ?? profileData?.tagline) ?? undefined}
+            template={defaultTemplate ? {
+              primaryColor: defaultTemplate.primaryColor ?? undefined,
+              coverHeadline: defaultTemplate.coverHeadline ?? undefined,
+              coverSubheadline: defaultTemplate.coverSubheadline ?? undefined,
+              letterOpening: defaultTemplate.letterOpening ?? undefined,
+              letterBody: defaultTemplate.letterBody ?? undefined,
+              letterClosing: defaultTemplate.letterClosing ?? undefined,
+              signatureName: defaultTemplate.signatureName ?? undefined,
+              signatureTitle: defaultTemplate.signatureTitle ?? undefined,
+              offerHeadline: defaultTemplate.offerHeadline ?? undefined,
+              offerDetails: defaultTemplate.offerDetails ?? undefined,
+              ctaText: defaultTemplate.ctaText ?? undefined,
+              warrantyYears: defaultTemplate.warrantyYears ?? undefined,
+              warrantyDetails: defaultTemplate.warrantyDetails ?? undefined,
+              referralBonus: defaultTemplate.referralBonus ?? undefined,
+              referralDetails: defaultTemplate.referralDetails ?? undefined,
+            } : undefined}
             sampleAddress={dbAddresses.find(a => a.measuredSqFt) ? {
               fullAddress: dbAddresses.find(a => a.measuredSqFt)!.fullAddress,
               measuredSqFt: parseFloat(dbAddresses.find(a => a.measuredSqFt)!.measuredSqFt!),
@@ -1553,12 +1573,29 @@ export default function AppPage() {
           totalAddresses={totalAddresses}
           totalQMailCost={totalQMail}
           totalEstimateValue={totalEstimate}
-          companyName={profileData?.companyName ?? undefined}
-          phone={profileData?.phone ?? undefined}
-          website={profileData?.website ?? undefined}
-          licenseNumber={profileData?.licenseNumber ?? undefined}
-          logoUrl={profileData?.logoUrl ?? undefined}
-          tagline={profileData?.tagline ?? undefined}
+          companyName={(defaultTemplate?.companyName ?? profileData?.companyName) ?? undefined}
+          phone={(defaultTemplate?.phone ?? profileData?.phone) ?? undefined}
+          website={(defaultTemplate?.website ?? profileData?.website) ?? undefined}
+          licenseNumber={(defaultTemplate?.licenseNumber ?? profileData?.licenseNumber) ?? undefined}
+          logoUrl={(defaultTemplate?.logoUrl ?? profileData?.logoUrl) ?? undefined}
+          tagline={(defaultTemplate?.tagline ?? profileData?.tagline) ?? undefined}
+          template={defaultTemplate ? {
+            primaryColor: defaultTemplate.primaryColor ?? undefined,
+            coverHeadline: defaultTemplate.coverHeadline ?? undefined,
+            coverSubheadline: defaultTemplate.coverSubheadline ?? undefined,
+            letterOpening: defaultTemplate.letterOpening ?? undefined,
+            letterBody: defaultTemplate.letterBody ?? undefined,
+            letterClosing: defaultTemplate.letterClosing ?? undefined,
+            signatureName: defaultTemplate.signatureName ?? undefined,
+            signatureTitle: defaultTemplate.signatureTitle ?? undefined,
+            offerHeadline: defaultTemplate.offerHeadline ?? undefined,
+            offerDetails: defaultTemplate.offerDetails ?? undefined,
+            ctaText: defaultTemplate.ctaText ?? undefined,
+            warrantyYears: defaultTemplate.warrantyYears ?? undefined,
+            warrantyDetails: defaultTemplate.warrantyDetails ?? undefined,
+            referralBonus: defaultTemplate.referralBonus ?? undefined,
+            referralDetails: defaultTemplate.referralDetails ?? undefined,
+          } : undefined}
           sampleAddress={dbAddresses.find(a => a.measuredSqFt) ? {
             fullAddress: dbAddresses.find(a => a.measuredSqFt)!.fullAddress,
             measuredSqFt: parseFloat(dbAddresses.find(a => a.measuredSqFt)!.measuredSqFt!),

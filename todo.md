@@ -66,9 +66,9 @@
 - [x] Stripe payments — charge $3.50/piece at batch approval (Stripe Checkout, webhook, payment success/cancel redirect)
 
 ## New Features (Jun 22)
-- [ ] Template Library — create, edit, preview, manage branded mailer templates per contractor
-- [ ] Google Solar API — auto-pull roof squares + pitch when pin is dropped on map
-- [ ] Connect template selection to order flow and QMailPreview
+- [x] Template Library — create, edit, preview, manage branded mailer templates per contractor
+- [x] Google Solar API — auto-pull roof squares + pitch when pin is dropped on map
+- [x] Connect template selection to order flow and QMailPreview
 
 ## Dynamic PDF Mailer Generator (Jun 30)
 - [x] 5-page PDF mailer replicating Ridgecap GC template layout
@@ -105,3 +105,16 @@
 - [x] Thumb-friendly controls: large buttons, bottom-anchored toolbar
 - [x] Speed/heading indicator when GPS follow is active
 - [x] Desktop layout preserved (side panel stays on wide screens)
+
+## Template Library Feature (Jul 6)
+- [x] Extend QMailPreview props to accept template copy fields (coverHeadline, letterBody, offerHeadline, warrantyYears, referralBonus, etc.)
+- [x] Render template-specific copy in all 5 pages of QMailPreview
+- [x] Extend CompanyData in mailerPdf.ts to include template copy fields
+- [x] Update all 5 page generators in mailerPdf.ts to use template copy when provided
+- [x] Extend mailerRoute.ts to fetch default template and merge into CompanyData for PDF generation
+- [x] Add template selector to AppPage order flow (uses default template automatically)
+- [x] Wire selected template into QMailPreview in AppPage
+- [x] Add logo upload button in TemplateLibrary editor (uses same /api/profile/logo endpoint)
+- [x] Link Template Library from Dashboard quick actions and Settings nav
+- [x] Mark todo items: Template Library, Google Solar API, Connect template to order flow
+- [x] Write vitest tests for template CRUD procedures (13 tests, all passing)

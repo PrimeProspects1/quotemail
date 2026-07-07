@@ -5,7 +5,7 @@
  * comparison, and referral pages.
  */
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
@@ -241,9 +241,40 @@ function TemplateEditor({
   const [form, setForm] = useState<TemplateFormData & { isDefault?: boolean }>(initial);
   const [activeSection, setActiveSection] = useState<SectionId>("branding");
   const [showPreview, setShowPreview] = useState(false);
+  const [logoUploading, setLogoUploading] = useState(false);
+  const logoInputRef = useRef<HTMLInputElement>(null);
 
   const set = (key: keyof typeof form, value: string | number | boolean | null) =>
     setForm((prev) => ({ ...prev, [key]: value }));
+
+  const handleLogoUpload = async (file: File) => {
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("Logo must be under 5 MB");
+      return;
+    }
+    if (!file.type.startsWith("image/")) {
+      toast.error("Please select an image file");
+      return;
+    }
+    setLogoUploading(true);
+    try {
+      const fd = new FormData();
+      fd.append("logo", file);
+      const res = await fetch("/api/profile/logo", {
+        method: "POST",
+        body: fd,
+        credentials: "include",
+      });
+      if (!res.ok) throw new Error("Upload failed");
+      const { logoUrl, logoKey } = await res.json() as { logoUrl: string; logoKey: string };
+      setForm((prev) => ({ ...prev, logoUrl, logoKey }));
+      toast.success("Logo uploaded");
+    } catch {
+      toast.error("Logo upload failed — please try again");
+    } finally {
+      setLogoUploading(false);
+    }
+  };
 
   const handleSubmit = () => {
     if (!form.name.trim()) {
@@ -411,26 +442,61 @@ function TemplateEditor({
                   </div>
                 </div>
                 <div>
-                  <Label className="text-xs text-slate-500">Logo URL</Label>
-                  <div className="flex gap-2 mt-1">
-                    <Input
-                      value={form.logoUrl || ""}
-                      onChange={(e) => set("logoUrl", e.target.value)}
-                      placeholder="https://yourcompany.com/logo.png"
-                      className="flex-1"
-                    />
-                    {form.logoUrl && (
-                      <img
-                        src={form.logoUrl}
-                        alt="Logo preview"
-                        className="w-10 h-10 rounded-lg object-contain border border-slate-200"
-                        onError={(e) => (e.currentTarget.style.display = "none")}
-                      />
+                  <Label className="text-xs text-slate-500">Company Logo</Label>
+                  <div className="flex items-center gap-3 mt-1">
+                    {form.logoUrl ? (
+                      <div className="relative group">
+                        <img
+                          src={form.logoUrl}
+                          alt="Logo preview"
+                          className="w-16 h-16 rounded-xl object-contain border border-slate-200 bg-slate-50"
+                          onError={(e) => (e.currentTarget.style.display = "none")}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setForm((p) => ({ ...p, logoUrl: "", logoKey: "" }))}
+                          className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-red-500 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      </div>
+                    ) : (
+                      <div
+                        className="w-16 h-16 rounded-xl border-2 border-dashed border-slate-200 bg-slate-50 flex items-center justify-center"
+                      >
+                        <Building2 className="w-6 h-6 text-slate-300" />
+                      </div>
                     )}
+                    <div className="flex-1">
+                      <input
+                        ref={logoInputRef}
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={(e) => {
+                          const f = e.target.files?.[0];
+                          if (f) handleLogoUpload(f);
+                          e.target.value = "";
+                        }}
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="gap-1.5 w-full"
+                        disabled={logoUploading}
+                        onClick={() => logoInputRef.current?.click()}
+                      >
+                        {logoUploading ? (
+                          <span className="w-4 h-4 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin" />
+                        ) : (
+                          <Upload className="w-4 h-4" />
+                        )}
+                        {logoUploading ? "Uploading..." : form.logoUrl ? "Replace Logo" : "Upload Logo"}
+                      </Button>
+                      <p className="text-xs text-slate-400 mt-1.5">PNG, JPG, SVG — max 5 MB</p>
+                    </div>
                   </div>
-                  <p className="text-xs text-slate-400 mt-1">
-                    Upload your logo via Settings → Profile, then paste the URL here.
-                  </p>
                 </div>
               </div>
             )}
@@ -644,6 +710,23 @@ function TemplateEditor({
           licenseNumber={form.licenseNumber || undefined}
           logoUrl={form.logoUrl || undefined}
           tagline={form.tagline || undefined}
+          template={{
+            primaryColor: form.primaryColor || undefined,
+            coverHeadline: form.coverHeadline || undefined,
+            coverSubheadline: form.coverSubheadline || undefined,
+            letterOpening: form.letterOpening || undefined,
+            letterBody: form.letterBody || undefined,
+            letterClosing: form.letterClosing || undefined,
+            signatureName: form.signatureName || undefined,
+            signatureTitle: form.signatureTitle || undefined,
+            offerHeadline: form.offerHeadline || undefined,
+            offerDetails: form.offerDetails || undefined,
+            ctaText: form.ctaText || undefined,
+            warrantyYears: form.warrantyYears || undefined,
+            warrantyDetails: form.warrantyDetails || undefined,
+            referralBonus: form.referralBonus || undefined,
+            referralDetails: form.referralDetails || undefined,
+          }}
           sampleAddress={{
             fullAddress: "1234 Maple Street, Atlanta, GA 30301",
             measuredSqFt: 1850,
@@ -900,6 +983,23 @@ export default function TemplateLibrary() {
           licenseNumber={previewTemplate.licenseNumber || undefined}
           logoUrl={previewTemplate.logoUrl || undefined}
           tagline={previewTemplate.tagline || undefined}
+          template={{
+            primaryColor: previewTemplate.primaryColor || undefined,
+            coverHeadline: previewTemplate.coverHeadline || undefined,
+            coverSubheadline: previewTemplate.coverSubheadline || undefined,
+            letterOpening: previewTemplate.letterOpening || undefined,
+            letterBody: previewTemplate.letterBody || undefined,
+            letterClosing: previewTemplate.letterClosing || undefined,
+            signatureName: previewTemplate.signatureName || undefined,
+            signatureTitle: previewTemplate.signatureTitle || undefined,
+            offerHeadline: previewTemplate.offerHeadline || undefined,
+            offerDetails: previewTemplate.offerDetails || undefined,
+            ctaText: previewTemplate.ctaText || undefined,
+            warrantyYears: previewTemplate.warrantyYears || undefined,
+            warrantyDetails: previewTemplate.warrantyDetails || undefined,
+            referralBonus: previewTemplate.referralBonus || undefined,
+            referralDetails: previewTemplate.referralDetails || undefined,
+          }}
           sampleAddress={{
             fullAddress: "1234 Maple Street, Atlanta, GA 30301",
             measuredSqFt: 1850,

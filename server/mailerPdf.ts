@@ -18,6 +18,22 @@ export interface CompanyData {
   licenseNumber: string;  // e.g. "#0414400422"
   logoUrl?: string | null;
   tagline?: string | null;
+  // Template copy overrides
+  primaryColor?: string | null;
+  coverHeadline?: string | null;
+  coverSubheadline?: string | null;
+  letterOpening?: string | null;
+  letterBody?: string | null;
+  letterClosing?: string | null;
+  signatureName?: string | null;
+  signatureTitle?: string | null;
+  offerHeadline?: string | null;
+  offerDetails?: string | null;
+  ctaText?: string | null;
+  warrantyYears?: number | null;
+  warrantyDetails?: string | null;
+  referralBonus?: string | null;
+  referralDetails?: string | null;
 }
 
 export interface CustomerData {
@@ -42,6 +58,11 @@ const GRAY   = "#F5F6FA";
 const DARK   = "#1A1A2E";
 const TEXT   = "#1F2937";
 const MUTED  = "#6B7280";
+
+// Resolve accent color from template or fall back to BLUE
+function accentColor(company: CompanyData): string {
+  return company.primaryColor || BLUE;
+}
 
 // Letter size in points
 const W = 612;
@@ -121,9 +142,14 @@ async function page1(doc: PDFKit.PDFDocument, company: CompanyData, customer: Cu
 
   // Left: headline + customer info
   const leftW = 320;
+  const headline = (company.coverHeadline || "Your Custom Roofing Estimate").split(" ");
+  const accent1 = accentColor(company);
   doc.fillColor(NAVY).font("Helvetica-Bold").fontSize(28);
-  doc.text("Your Custom", M, contentY + 16, { width: leftW });
-  doc.text("Roofing Estimate", M, contentY + 50, { width: leftW });
+  // Render headline — split across two lines if long
+  const hl1 = headline.slice(0, Math.ceil(headline.length / 2)).join(" ");
+  const hl2 = headline.slice(Math.ceil(headline.length / 2)).join(" ");
+  doc.text(hl1 || "Your Custom", M, contentY + 16, { width: leftW });
+  doc.text(hl2 || "Roofing Estimate", M, contentY + 50, { width: leftW });
 
   doc.fillColor(MUTED).font("Helvetica").fontSize(10);
   doc.text("Prepared Exclusively for:", M, contentY + 90, { width: leftW });
@@ -145,8 +171,10 @@ async function page1(doc: PDFKit.PDFDocument, company: CompanyData, customer: Cu
   doc.text("YOUR INVESTMENT", rightX + 8, contentY + 20, { width: rightW - 16 });
   doc.fillColor(BLUE).font("Helvetica-Bold").fontSize(30);
   doc.text(`$${customer.estimatePrice.toLocaleString()}`, rightX + 8, contentY + 34, { width: rightW - 16 });
+  const accent2 = accentColor(company);
   doc.fillColor(NAVY).font("Helvetica-Bold").fontSize(9);
-  doc.text("AS LOW AS $127/MO", rightX + 8, contentY + 72, { width: rightW - 16 });
+  const subhl = company.coverSubheadline || "AS LOW AS $127/MO";
+  doc.text(subhl.toUpperCase(), rightX + 8, contentY + 72, { width: rightW - 16 });
 
   // QR code
   const qrBuf = await generateQRBuffer(company.website || `https://${company.companyName.toLowerCase().replace(/\s+/g, "")}.com`);
@@ -209,49 +237,23 @@ async function page1(doc: PDFKit.PDFDocument, company: CompanyData, customer: Cu
 
 function page2(doc: PDFKit.PDFDocument, company: CompanyData, customer: CustomerData) {
   // Header accent line
-  fillRect(doc, 0, 0, W, 4, NAVY);
+  fillRect(doc, 0, 0, W, 4, accentColor(company));
 
+  const opening = company.letterOpening || "Dear Homeowner,";
   doc.fillColor(NAVY).font("Helvetica-Bold").fontSize(16);
-  doc.text("Dear Homeowner,", M, 20, { width: W - M * 2 });
+  doc.text(opening, M, 20, { width: W - M * 2 });
+
+  const defaultBody = `Most homeowners are getting fed up with door-knockers, pushy salespeople, and high prices when it comes to getting a new roof. We won't bother you by knocking on the door, instead, we skip the hassle and lead with our price.\n\nWhy Did You Receive This Bid?\n\nWe have taken the initiative to send a roofing estimate to you because your home meets the criteria for a roof replacement. We look for things like missing shingles, moss, algae, buckling, curling, granule loss, fiberglass exposure, and more.\n\nMany homeowners wait until leaks or visible damage occur before evaluating their roof. At ${company.companyName}, we believe homeowners should have the opportunity to understand their roof replacement options before problems arise.\n\nThat's why we proactively provide pricing and education to homeowners in your area.\n\nSo when the time comes — you already know your options, your pricing, and who you can trust.`;
+  const bodyText = company.letterBody || defaultBody;
 
   doc.fillColor(TEXT).font("Helvetica").fontSize(11).lineGap(4);
-  doc.text(
-    `Most homeowners are getting fed up with door-knockers, pushy salespeople, and high prices when it comes to getting a new roof. We won't bother you by knocking on the door, instead, we skip the hassle and lead with our price.`,
-    M, 52, { width: W - M * 2 }
-  );
+  doc.text(bodyText, M, 52, { width: W - M * 2 });
 
-  // Why Did You Receive This Bid?
-  doc.fillColor(NAVY).font("Helvetica-Bold").fontSize(16);
-  centeredText(doc, "Why Did You Receive This Bid?", 120);
-
-  doc.fillColor(TEXT).font("Helvetica").fontSize(11).lineGap(4);
-  doc.text(
-    `We have taken the initiative to send a roofing estimate to you because your home meets the criteria for a roof replacement. We look for things like missing shingles, moss, algae, buckling, curling, granule loss, fiberglass exposure, and more.`,
-    M, 148, { width: W - M * 2, align: "center" }
-  );
-
-  doc.moveDown(0.5);
-  doc.text(
-    `Many homeowners wait until leaks or visible damage occur before evaluating their roof. At ${company.companyName}, we believe homeowners should have the opportunity to understand their roof replacement options before problems arise.`,
-    M, 220, { width: W - M * 2, align: "center" }
-  );
-
-  doc.moveDown(0.5);
-  doc.text(
-    `That's why we proactively provide pricing and education to homeowners in your area.`,
-    M, 292, { width: W - M * 2, align: "center" }
-  );
-
-  doc.moveDown(0.5);
-  doc.text(
-    `So when the time comes—\nYou already know your options, your pricing, and who you can trust.`,
-    M, 322, { width: W - M * 2, align: "center" }
-  );
-
+  const closingY = Math.min(doc.y + 16, 380);
   doc.fillColor(NAVY).font("Helvetica-Bold").fontSize(12);
   doc.text(
-    `No pressure. No obligation. Just helpful information to assist with one of your home's most important investments.`,
-    M, 368, { width: W - M * 2, align: "center" }
+    company.letterClosing || `No pressure. No obligation. Just helpful information to assist with one of your home's most important investments.`,
+    M, closingY, { width: W - M * 2, align: "center" }
   );
 
   // ── House photo / badge section ───────────────────────────────────────────
@@ -282,10 +284,17 @@ function page2(doc: PDFKit.PDFDocument, company: CompanyData, customer: Customer
   const cy = imgY + imgH / 2;
   doc.save()
     .circle(cx, cy, 50)
-    .fill(NAVY2)
+    .fill(accentColor(company))
     .restore();
   doc.fillColor(WHITE).font("Helvetica-Bold").fontSize(10);
   doc.text(company.companyName.toUpperCase(), cx - 40, cy - 12, { width: 80, align: "center" });
+
+  // Signature
+  const sigName = company.signatureName || company.companyName;
+  const sigTitle = company.signatureTitle || "Your Neighborhood Roofing Specialist";
+  const sigY = imgY + imgH + 12;
+  doc.fillColor(TEXT).font("Helvetica").fontSize(10);
+  doc.text(`Sincerely, ${sigName} — ${sigTitle}`, M, sigY, { width: W - M * 2, align: "center" });
 
   footer(doc, company);
 }
@@ -405,11 +414,13 @@ async function page5(doc: PDFKit.PDFDocument, company: CompanyData) {
   doc.fillColor(NAVY).font("Helvetica-Bold").fontSize(14);
   centeredText(doc, `The ${company.companyName} Difference`, 90);
 
+  const warrantyYrs = company.warrantyYears ?? 10;
+  const warrantyDetail = company.warrantyDetails || `${warrantyYrs}-year workmanship warranty on all installations.`;
   const diffs = [
     { title: "1-Day Roof", desc: "Most residential roof replacements completed in just one day." },
     { title: "No Flat Tire Guarantee", desc: "We thoroughly magnet sweep and clean your property to help ensure no roofing nails are left behind." },
     { title: "1000's of Happy Customers", desc: `${company.companyName} has been in business for more than 10 years with thousands of quality jobs completed.` },
-    { title: "10-Year Workmanship Warranty", desc: "Your installation is backed by our workmanship guarantee." },
+    { title: `${warrantyYrs}-Year Workmanship Warranty`, desc: warrantyDetail },
     { title: "Complete Premium Roofing Systems", desc: "No shortcuts. No corner cutting. Premium materials every time." },
   ];
 
@@ -424,16 +435,28 @@ async function page5(doc: PDFKit.PDFDocument, company: CompanyData) {
 
   // CTA section
   const ctaY = y + 10;
+  const ctaHeadline = company.offerHeadline || "Ready To Move Forward?";
+  const ctaDetails = company.offerDetails || "Schedule your final roof verification inspection today. Our inspector will verify your roof specifics, confirm measurements, and finalize your installation scope. You just pick the color!";
+  const ctaButtonText = company.ctaText || "No Sales Meeting Required. No Pressure. No Obligation.";
+  const referralBonus = company.referralBonus || "$250";
+  const referralDetails = company.referralDetails || `Refer a neighbor and receive a ${referralBonus} credit on your next service.`;
+
   doc.fillColor(NAVY).font("Helvetica-Bold").fontSize(22);
-  centeredText(doc, "Ready To Move Forward?", ctaY);
+  centeredText(doc, ctaHeadline, ctaY);
 
   doc.fillColor(TEXT).font("Helvetica").fontSize(11);
-  centeredText(doc, "Schedule your final roof verification inspection today.", ctaY + 30);
-  centeredText(doc, "Our inspector will verify your roof specifics, confirm measurements,", ctaY + 44);
-  centeredText(doc, "and finalize your installation scope. You just pick the color!", ctaY + 58);
+  centeredText(doc, ctaDetails, ctaY + 30);
 
   doc.fillColor(NAVY).font("Helvetica-Bold").fontSize(11);
-  centeredText(doc, "No Sales Meeting Required. No Pressure. No Obligation.", ctaY + 78);
+  centeredText(doc, ctaButtonText, ctaY + 78);
+
+  // Referral callout
+  const refY = ctaY + 96;
+  fillRect(doc, M, refY, W - M * 2, 36, GRAY);
+  doc.fillColor(NAVY).font("Helvetica-Bold").fontSize(10);
+  doc.text(`Refer a neighbor, earn ${referralBonus}:`, M + 8, refY + 8, { width: W - M * 2 - 16 });
+  doc.fillColor(TEXT).font("Helvetica").fontSize(9);
+  doc.text(referralDetails, M + 8, refY + 22, { width: W - M * 2 - 16 });
 
   // QR + CALL section
   const qrY = ctaY + 104;

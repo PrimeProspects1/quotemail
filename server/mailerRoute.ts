@@ -6,7 +6,7 @@
  */
 
 import { Router, Request, Response } from "express";
-import { getContractorProfile, getAddressById } from "./db";
+import { getContractorProfile, getAddressById, getDefaultMailerTemplate } from "./db";
 import { generateMailerPdf, CompanyData, CustomerData } from "./mailerPdf";
 import { sdk } from "./_core/sdk";
 
@@ -29,9 +29,10 @@ export function registerMailerRoute(app: Router) {
       }
 
       // ── Fetch data ──────────────────────────────────────────────────────────
-      const [profile, address] = await Promise.all([
+      const [profile, address, defaultTemplate] = await Promise.all([
         getContractorProfile(user.id),
         getAddressById(addressId, user.id),
+        getDefaultMailerTemplate(user.id),
       ]);
 
       if (!address) {
@@ -39,15 +40,32 @@ export function registerMailerRoute(app: Router) {
         return;
       }
 
-      // ── Build company data ──────────────────────────────────────────────────
+      // ── Build company data (template overrides profile where set) ───────────
+      const t = defaultTemplate;
       const company: CompanyData = {
-        companyName: profile?.companyName || user.name || "Your Roofing Company",
-        phone:        profile?.phone        || "(000) 000-0000",
-        website:      profile?.website      || "www.yourroofingcompany.com",
-        address:      `${profile?.companyName || "Your Company"} — Licensed & Insured`,
-        licenseNumber: profile?.licenseNumber || "#000000",
-        logoUrl:      profile?.logoUrl,
-        tagline:      profile?.tagline,
+        companyName:   t?.companyName   || profile?.companyName   || user.name || "Your Roofing Company",
+        phone:         t?.phone         || profile?.phone         || "(000) 000-0000",
+        website:       t?.website       || profile?.website       || "www.yourroofingcompany.com",
+        address:       `${t?.companyName || profile?.companyName || "Your Company"} — Licensed & Insured`,
+        licenseNumber: t?.licenseNumber || profile?.licenseNumber || "#000000",
+        logoUrl:       t?.logoUrl       || profile?.logoUrl,
+        tagline:       t?.tagline       || profile?.tagline,
+        // Template copy fields
+        primaryColor:      t?.primaryColor,
+        coverHeadline:     t?.coverHeadline,
+        coverSubheadline:  t?.coverSubheadline,
+        letterOpening:     t?.letterOpening,
+        letterBody:        t?.letterBody,
+        letterClosing:     t?.letterClosing,
+        signatureName:     t?.signatureName,
+        signatureTitle:    t?.signatureTitle,
+        offerHeadline:     t?.offerHeadline,
+        offerDetails:      t?.offerDetails,
+        ctaText:           t?.ctaText,
+        warrantyYears:     t?.warrantyYears ?? undefined,
+        warrantyDetails:   t?.warrantyDetails,
+        referralBonus:     t?.referralBonus,
+        referralDetails:   t?.referralDetails,
       };
 
       // ── Build customer data ─────────────────────────────────────────────────
@@ -93,21 +111,38 @@ export function registerMailerRoute(app: Router) {
       const addressId = parseInt(req.params.addressId, 10);
       if (isNaN(addressId)) { res.status(400).json({ error: "Invalid address ID" }); return; }
 
-      const [profile, address] = await Promise.all([
+      const [profile, address, defaultTemplate2] = await Promise.all([
         getContractorProfile(user.id),
         getAddressById(addressId, user.id),
+        getDefaultMailerTemplate(user.id),
       ]);
 
       if (!address) { res.status(404).json({ error: "Address not found" }); return; }
 
+      const t2 = defaultTemplate2;
       const company: CompanyData = {
-        companyName:   profile?.companyName  || user.name || "Your Roofing Company",
-        phone:         profile?.phone        || "(000) 000-0000",
-        website:       profile?.website      || "www.yourroofingcompany.com",
-        address:       `${profile?.companyName || "Your Company"} — Licensed & Insured`,
-        licenseNumber: profile?.licenseNumber || "#000000",
-        logoUrl:       profile?.logoUrl,
-        tagline:       profile?.tagline,
+        companyName:   t2?.companyName   || profile?.companyName   || user.name || "Your Roofing Company",
+        phone:         t2?.phone         || profile?.phone         || "(000) 000-0000",
+        website:       t2?.website       || profile?.website       || "www.yourroofingcompany.com",
+        address:       `${t2?.companyName || profile?.companyName || "Your Company"} — Licensed & Insured`,
+        licenseNumber: t2?.licenseNumber || profile?.licenseNumber || "#000000",
+        logoUrl:       t2?.logoUrl       || profile?.logoUrl,
+        tagline:       t2?.tagline       || profile?.tagline,
+        primaryColor:      t2?.primaryColor,
+        coverHeadline:     t2?.coverHeadline,
+        coverSubheadline:  t2?.coverSubheadline,
+        letterOpening:     t2?.letterOpening,
+        letterBody:        t2?.letterBody,
+        letterClosing:     t2?.letterClosing,
+        signatureName:     t2?.signatureName,
+        signatureTitle:    t2?.signatureTitle,
+        offerHeadline:     t2?.offerHeadline,
+        offerDetails:      t2?.offerDetails,
+        ctaText:           t2?.ctaText,
+        warrantyYears:     t2?.warrantyYears ?? undefined,
+        warrantyDetails:   t2?.warrantyDetails,
+        referralBonus:     t2?.referralBonus,
+        referralDetails:   t2?.referralDetails,
       };
 
       const nameParts = (address.fullAddress || "").split(",")[0].trim().split(" ");

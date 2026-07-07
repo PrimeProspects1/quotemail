@@ -8,7 +8,7 @@ import { Link } from "wouter";
 import {
   Mail, MapPin, BarChart3, DollarSign, Plus, Settings, LogOut,
   Loader2, Package, TrendingUp, ArrowRight, FileSpreadsheet,
-  CloudLightning, Truck,
+  CloudLightning, Truck, LayoutTemplate,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -116,6 +116,11 @@ export default function Dashboard() {
           <Link href="/fulfillment">
             <Button variant="ghost" size="sm" className="gap-2 text-slate-600">
               <Truck className="w-4 h-4" /> Fulfillment
+            </Button>
+          </Link>
+          <Link href="/templates">
+            <Button variant="ghost" size="sm" className="gap-2 text-slate-600">
+              <LayoutTemplate className="w-4 h-4" /> Templates
             </Button>
           </Link>
           <Link href="/settings">
@@ -228,6 +233,7 @@ export default function Dashboard() {
             { icon: CloudLightning, color: "bg-orange-50 text-orange-600", title: "Storm Event Targeting", desc: "Browse active NOAA hail and wind alerts to find neighborhoods that need roofing now.", href: "/storm-data", cta: "View Alerts" },
             { icon: Truck, color: "bg-teal-50 text-teal-600", title: "Fulfillment Status", desc: "Track your Prime Mail batches from print to delivery via The Addressers.", href: "/fulfillment", cta: "Track Batches" },
             { icon: Settings, color: "bg-emerald-50 text-emerald-600", title: "Set Pitch Rates", desc: "Configure your $/square pricing for each pitch tier before generating estimates.", href: "/settings", cta: "Configure" },
+            { icon: LayoutTemplate, color: "bg-rose-50 text-rose-600", title: "Mailer Templates", desc: "Design branded 5-page mailer packets with your logo, copy, colors, and offer details.", href: "/templates", cta: "Manage Templates" },
           ].map((a, i) => (
             <Card key={i} className="border-slate-200 hover:border-slate-300 hover:shadow-sm transition-all">
               <CardContent className="pt-5 pb-5">
